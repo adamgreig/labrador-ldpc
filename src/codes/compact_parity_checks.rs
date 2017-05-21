@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 /*
  * Constants used to define the parity check matrices for the TC codes.
  *
