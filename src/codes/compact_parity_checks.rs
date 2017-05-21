@@ -12,13 +12,13 @@
  * * HS: HI+HP
  */
 
-const HZ: u8 = (0 << 6);
-const HI: u8 = (1 << 6);
-const HP: u8 = (2 << 6);
-const HS: u8 = (HI | HP);
+pub const HZ: u8 = (0 << 6);
+pub const HI: u8 = (1 << 6);
+pub const HP: u8 = (2 << 6);
+pub const HS: u8 = (HI | HP);
 
 /// Compact parity matrix for the TC128 code
-static TC128_H: [[u8; 8]; 4] = [
+pub static TC128_H: [[u8; 8]; 4] = [
     [HS| 7, HP| 2, HP|14, HP| 6, HZ   , HP| 0, HP|13, HI   ],
     [HP| 6, HS|15, HP| 0, HP| 1, HI   , HZ   , HP| 0, HP| 7],
     [HP| 4, HP| 1, HS|15, HP|14, HP|11, HI   , HZ   , HP| 3],
@@ -26,7 +26,7 @@ static TC128_H: [[u8; 8]; 4] = [
 ];
 
 /// Compact parity matrix for the TC256 code
-static TC256_H: [[u8; 8]; 4] = [
+pub static TC256_H: [[u8; 8]; 4] = [
     [HS|31, HP|15, HP|25, HP| 0, HZ   , HP|20, HP|12, HI   ],
     [HP|28, HS|30, HP|29, HP|24, HI   , HZ   , HP| 1, HP|20],
     [HP| 8, HP| 0, HS|28, HP| 1, HP|29, HI   , HZ   , HP|21],
@@ -34,7 +34,7 @@ static TC256_H: [[u8; 8]; 4] = [
 ];
 
 /// Compact parity matrix for the TC512 code
-static TC512_H: [[u8; 8]; 4] = [
+pub static TC512_H: [[u8; 8]; 4] = [
     [HS|63, HP|30, HP|50, HP|25, HZ   , HP|43, HP|62, HI   ],
     [HP|56, HS|61, HP|50, HP|23, HI   , HZ   , HP|37, HP|26],
     [HP|16, HP| 0, HS|55, HP|27, HP|56, HI   , HZ   , HP|43],
@@ -68,10 +68,15 @@ static TC512_H: [[u8; 8]; 4] = [
  *
  * The PI_K function is:
  * pi_k(i) = M/4 (( theta_k + floor(4i / M)) mod 4) + (phi_k( floor(4i / M), M ) + i) mod M/4
+ *
+ * The sizes _should_ be 5x3x3 and 2x3x3 and 4x3x3 for rates 1/2, 2/3, and 4/5, respectively,
+ * but this makes it an unholy pain to pass around to the parity expanding functions.
+ * So for the sake of type safety we expand these to all be the same shape,
+ * sacrificing 36 bytes.
  */
 
 /// Compact parity matrix for the rate-1/2 TM codes
-static TM_R12_H: [[[u8; 5]; 3]; 3] = [
+pub static TM_R12_H: [[[u8; 5]; 3]; 3] = [
     [
         [HZ   , HZ   , HI   , HZ   , HI   ],
         [HI   , HI   , HZ   , HI   , HP| 2],
@@ -88,51 +93,55 @@ static TM_R12_H: [[[u8; 5]; 3]; 3] = [
 ];
 
 /// Compact parity left submatrix for the rate-2/3 TM codes
-static TM_R23_H: [[[u8; 2]; 3]; 3] = [
+pub static TM_R23_H: [[[u8; 5]; 3]; 3] = [
     [
-        [HZ   , HZ   ],
-        [HP| 9, HI   ],
-        [HI   , HP|12],
+        [HZ   , HZ   , 0, 0, 0],
+        [HP| 9, HI   , 0, 0, 0],
+        [HI   , HP|12, 0, 0, 0],
     ], [
-        [0    , 0    ],
-        [HP|10, 0    ],
-        [0    , HP|13],
+        [0    , 0    , 0, 0, 0],
+        [HP|10, 0    , 0, 0, 0],
+        [0    , HP|13, 0, 0, 0],
     ], [
-        [0    , 0    ],
-        [HP|11, 0    ],
-        [0    , HP|14],
+        [0    , 0    , 0, 0, 0],
+        [HP|11, 0    , 0, 0, 0],
+        [0    , HP|14, 0, 0, 0],
     ]
 ];
 
 /// Compact parity left submatrix for the rate-4/5 TM codes
-static TM_R45_H: [[[u8; 4]; 3]; 3] = [
+pub static TM_R45_H: [[[u8; 5]; 3]; 3] = [
     [
-        [HZ   , HZ   , HZ   , HZ   ],
-        [HP|21, HI   , HP|15, HI   ],
-        [HI   , HP|24, HI   , HP|18],
+        [HZ   , HZ   , HZ   , HZ   , 0],
+        [HP|21, HI   , HP|15, HI   , 0],
+        [HI   , HP|24, HI   , HP|18, 0],
     ], [
-        [0    , 0    , 0    , 0    ],
-        [HP|22, 0    , HP|16, 0    ],
-        [0    , HP|25, 0    , HP|19],
+        [0    , 0    , 0    , 0    , 0],
+        [HP|22, 0    , HP|16, 0    , 0],
+        [0    , HP|25, 0    , HP|19, 0],
     ], [
-        [0    , 0    , 0    , 0    ],
-        [HP|23, 0    , HP|17, 0    ],
-        [0    , HP|26, 0    , HP|20],
+        [0    , 0    , 0    , 0    , 0],
+        [HP|23, 0    , HP|17, 0    , 0],
+        [0    , HP|26, 0    , HP|20, 0],
     ]
 ];
 
 
 /// Theta constants. Looked up against (k-1) from k=1 to k=26.
-static THETA_K: [u8; 26] = [3, 0, 1, 2, 2, 3, 0, 1, 0, 1, 2, 0, 2,
+pub static THETA_K: [u8; 26] = [3, 0, 1, 2, 2, 3, 0, 1, 0, 1, 2, 0, 2,
                             3, 0, 1, 2, 0, 1, 2, 0, 1, 2, 1, 2, 3];
 
 
 /// Phi constants for M=128.
 ///
 /// First index is j (from 0 to 3), second index is k-1 (from k=1 to k=26).
-/// These are split up by M because 1) we can use u8 for M=128 to 1024 and 2) we only need some M
-/// for some codes, so the linker can throw away the unused constants.
-static PHI_J_K_M128: [[u8; 26]; 4] = [
+/// These are split up by M because we only need one set for each TM code, so the linker can throw
+/// away the unused constants.
+///
+/// Ideally the first four would be u8 instead of u16 to save space, but this
+/// complicates actually using them -- the monomorphised generic function
+/// would likely take more text space than just making them all u16 for 104 extra bytes per code.
+pub static PHI_J_K_M128: [[u16; 26]; 4] = [
     [1, 22, 0, 26, 0, 10, 5, 18, 3, 22, 3, 8, 25, 25, 2, 27, 7, 7, 15, 10, 4,
      19, 7, 9, 26, 17],
     [0, 27, 30, 28, 7, 1, 8, 20, 26, 24, 4, 12, 23, 15, 15, 22, 31, 3, 29, 21,
@@ -144,7 +153,7 @@ static PHI_J_K_M128: [[u8; 26]; 4] = [
 ];
 
 /// Phi constants for M=256. See docs for PHI_J_K_M128.
-static PHI_J_K_M256: [[u8; 26]; 4] = [
+pub static PHI_J_K_M256: [[u16; 26]; 4] = [
     [59, 18, 52, 23, 11, 7, 22, 25, 27, 30, 43, 14, 46, 62, 44, 12, 38, 47, 1,
      52, 61, 10, 55, 7, 12, 2],
     [0, 32, 21, 36, 30, 29, 44, 29, 39, 14, 22, 15, 48, 55, 39, 11, 1, 50, 40,
@@ -156,7 +165,7 @@ static PHI_J_K_M256: [[u8; 26]; 4] = [
 ];
 
 /// Phi constants for M=512. See docs for PHI_J_K_M128.
-static PHI_J_K_M512: [[u8; 26]; 4] = [
+pub static PHI_J_K_M512: [[u16; 26]; 4] = [
     [16, 103, 105, 0, 50, 29, 115, 30, 92, 78, 70, 66, 39, 84, 79, 70, 29, 32,
      45, 113, 86, 1, 42, 118, 33, 126],
     [0, 53, 74, 45, 47, 0, 59, 102, 25, 3, 88, 65, 62, 68, 91, 70, 115, 31,
@@ -168,7 +177,7 @@ static PHI_J_K_M512: [[u8; 26]; 4] = [
 ];
 
 /// Phi constants for M=1024. See docs for PHI_J_K_M128.
-static PHI_J_K_M1024: [[u8; 26]; 4] = [
+pub static PHI_J_K_M1024: [[u16; 26]; 4] = [
     [160, 241, 185, 251, 209, 103, 90, 184, 248, 12, 111, 66, 173, 42, 157,
      174, 104, 144, 43, 181, 250, 202, 68, 177, 170, 89],
     [0, 182, 249, 65, 70, 141, 237, 77, 55, 12, 227, 42, 52, 243, 179, 250,
@@ -180,7 +189,7 @@ static PHI_J_K_M1024: [[u8; 26]; 4] = [
 ];
 
 /// Phi constants for M=2048. See docs for PHI_J_K_M128.
-static PHI_J_K_M2048: [[u16; 26]; 4] = [
+pub static PHI_J_K_M2048: [[u16; 26]; 4] = [
     [108, 126, 238, 481, 96, 28, 59, 225, 323, 28, 386, 305, 34, 510, 147, 199,
      347, 391, 165, 414, 97, 158, 86, 168, 506, 489],
     [0, 375, 436, 350, 260, 84, 318, 382, 169, 213, 67, 313, 242, 188, 1, 306,
@@ -192,7 +201,7 @@ static PHI_J_K_M2048: [[u16; 26]; 4] = [
 ];
 
 /// Phi constants for M=4096. See docs for PHI_J_K_M128.
-static PHI_J_K_M4096: [[u16; 26]; 4] = [
+pub static PHI_J_K_M4096: [[u16; 26]; 4] = [
     [226, 618, 404, 32, 912, 950, 534, 63, 971, 304, 409, 708, 719, 176, 743,
      759, 674, 958, 984, 11, 413, 925, 687, 752, 867, 323],
     [0, 767, 227, 247, 284, 370, 482, 273, 886, 634, 762, 184, 696, 413, 854,
@@ -204,7 +213,7 @@ static PHI_J_K_M4096: [[u16; 26]; 4] = [
 ];
 
 /// Phi constants for M=8192. See docs for PHI_J_K_M128.
-static PHI_J_K_M8192: [[u16; 26]; 4] = [
+pub static PHI_J_K_M8192: [[u16; 26]; 4] = [
     [1148, 2032, 249, 1807, 485, 1044, 717, 873, 364, 1926, 1241, 1769, 532,
      768, 1138, 965, 141, 1527, 505, 1312, 1840, 709, 1427, 989, 1925, 270],
     [0, 1822, 203, 882, 1989, 957, 1705, 1083, 1072, 354, 1942, 446, 1456,
