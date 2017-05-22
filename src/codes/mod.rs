@@ -115,6 +115,18 @@ pub struct CodeParams {
 
     /// Length of the sparse parity check vs array in u16. Equal to n+punctured_bits+1.
     pub sparse_paritycheck_vs_len: usize,
+
+    /// Length of the working area required for the bit-flipping decoder.
+    /// Equal to n+punctured_bits.
+    pub decode_bf_working_len: usize,
+
+    /// Length of the working area required for the message-passing decoder.
+    /// Equal to 2*paritycheck_sum.
+    pub decode_mp_working_len: usize,
+
+    /// Length of output required from any decoder.
+    /// Equal to (n+punctured_bits)/8.
+    pub output_len: usize,
 }
 
 /// Code parameters for the TC128 code
@@ -125,12 +137,16 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     submatrix_size: 128/8,
     circulant_size: 128/8,
     paritycheck_sum: 512,
-    generator_len: 128,
-    paritycheck_len: 256,
+
+    generator_len: 64 * (128 - 64)/32,
+    paritycheck_len: (128 + 0) * (128 - 64 + 0)/32,
     sparse_paritycheck_ci_len: 512,
-    sparse_paritycheck_cs_len: 65,
+    sparse_paritycheck_cs_len: 128 - 64 + 0 + 1,
     sparse_paritycheck_vi_len: 512,
-    sparse_paritycheck_vs_len: 129,
+    sparse_paritycheck_vs_len: 128 + 0 + 1,
+    decode_bf_working_len: 128 + 0,
+    decode_mp_working_len: 2 * 512,
+    output_len: 128/8,
 };
 
 /// Code parameters for the TC256 code
@@ -141,12 +157,16 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     submatrix_size: 256/8,
     circulant_size: 256/8,
     paritycheck_sum: 1024,
-    generator_len: 512,
-    paritycheck_len: 1024,
+
+    generator_len: 128 * (256 - 128)/32,
+    paritycheck_len: (256 + 0) * (256 - 128 + 0)/32,
     sparse_paritycheck_ci_len: 1024,
-    sparse_paritycheck_cs_len: 129,
+    sparse_paritycheck_cs_len: 256 - 128 + 0 + 1,
     sparse_paritycheck_vi_len: 1024,
-    sparse_paritycheck_vs_len: 257,
+    sparse_paritycheck_vs_len: 256 + 0 + 1,
+    decode_bf_working_len: 256 + 0,
+    decode_mp_working_len: 2 * 1024,
+    output_len: 256/8,
 };
 
 /// Code parameters for the TC512 code
@@ -157,12 +177,16 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     submatrix_size: 512/8,
     circulant_size: 512/8,
     paritycheck_sum: 2048,
-    generator_len: 2048,
-    paritycheck_len: 4096,
+
+    generator_len: 256 * (512 - 256)/32,
+    paritycheck_len: (512 + 0) * (512 - 256 + 0)/32,
     sparse_paritycheck_ci_len: 2048,
-    sparse_paritycheck_cs_len: 257,
+    sparse_paritycheck_cs_len: 512 - 256 + 0 + 1,
     sparse_paritycheck_vi_len: 2048,
-    sparse_paritycheck_vs_len: 513,
+    sparse_paritycheck_vs_len: 512 + 0 + 1,
+    decode_bf_working_len: 512 + 0,
+    decode_mp_working_len: 2 * 2048,
+    output_len: 512/8,
 };
 
 /// Code parameters for the TM1280 code
@@ -173,12 +197,16 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     submatrix_size: 128,
     circulant_size: 128/4,
     paritycheck_sum: 4992,
-    generator_len: 8192,
-    paritycheck_len: 16896,
+
+    generator_len: 1024 * (1280 - 1024)/32,
+    paritycheck_len: (1280 + 128) * (1280 - 1024 + 128)/32,
     sparse_paritycheck_ci_len: 4992,
-    sparse_paritycheck_cs_len: 385,
+    sparse_paritycheck_cs_len: 1280 - 1024 + 128 + 1,
     sparse_paritycheck_vi_len: 4992,
-    sparse_paritycheck_vs_len: 1409,
+    sparse_paritycheck_vs_len: 1280 + 128 + 1,
+    decode_bf_working_len: 1280 + 128,
+    decode_mp_working_len: 2 * 4992,
+    output_len: (1280 + 128)/8,
 };
 
 /// Code parameters for the TM1536 code
@@ -189,12 +217,16 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     submatrix_size: 256,
     circulant_size: 256/4,
     paritycheck_sum: 5888,
-    generator_len: 16384,
-    paritycheck_len: 43008,
+
+    generator_len: 1024 * (1536 - 1024)/32,
+    paritycheck_len: (1536 + 256) * (1536 - 1024 + 256)/32,
     sparse_paritycheck_ci_len: 5888,
-    sparse_paritycheck_cs_len: 769,
+    sparse_paritycheck_cs_len: 1536 - 1024 + 256 + 1,
     sparse_paritycheck_vi_len: 5888,
-    sparse_paritycheck_vs_len: 1793,
+    sparse_paritycheck_vs_len: 1536 + 256 + 1,
+    decode_bf_working_len: 1536 + 256,
+    decode_mp_working_len: 2 * 5888,
+    output_len: (1536 + 256)/8,
 };
 
 /// Code parameters for the TM2048 code
@@ -205,12 +237,16 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     submatrix_size: 512,
     circulant_size: 512/4,
     paritycheck_sum: 7680,
-    generator_len: 32768,
-    paritycheck_len: 122880,
+
+    generator_len: 1024 * (2048 - 1024)/32,
+    paritycheck_len: (2048 + 512) * (2048 - 1024 + 512)/32,
     sparse_paritycheck_ci_len: 7680,
-    sparse_paritycheck_cs_len: 1537,
+    sparse_paritycheck_cs_len: 2048 - 1024 + 512 + 1,
     sparse_paritycheck_vi_len: 7680,
-    sparse_paritycheck_vs_len: 2561,
+    sparse_paritycheck_vs_len: 2048 + 512 + 1,
+    decode_bf_working_len: 2048 + 512,
+    decode_mp_working_len: 2 * 7680,
+    output_len: (2048 + 512)/8,
 };
 
 /// Code parameters for the TM5120 code
@@ -221,12 +257,16 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     submatrix_size: 512,
     circulant_size: 512/4,
     paritycheck_sum: 19968,
-    generator_len: 131072,
-    paritycheck_len: 270336,
+
+    generator_len: 4096 * (5120 - 4096)/32,
+    paritycheck_len: (5120 + 512) * (5120 - 4096 + 512)/32,
     sparse_paritycheck_ci_len: 19968,
-    sparse_paritycheck_cs_len: 1537,
+    sparse_paritycheck_cs_len: 5120 - 4096 + 512 + 1,
     sparse_paritycheck_vi_len: 19968,
-    sparse_paritycheck_vs_len: 5633,
+    sparse_paritycheck_vs_len: 5120 + 512 + 1,
+    decode_bf_working_len: 5120 + 512,
+    decode_mp_working_len: 2 * 19968,
+    output_len: (5120 + 512)/8,
 };
 
 /// Code parameters for the TM6144 code
@@ -237,12 +277,16 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     submatrix_size: 1024,
     circulant_size: 1024/4,
     paritycheck_sum: 23552,
-    generator_len: 262144,
-    paritycheck_len: 688128,
+
+    generator_len: 4096 * (6144 - 4096)/32,
+    paritycheck_len: (6144 + 1024) * (6144 - 4096 + 1024)/32,
     sparse_paritycheck_ci_len: 23552,
-    sparse_paritycheck_cs_len: 3073,
+    sparse_paritycheck_cs_len: 6144 - 4096 + 1024 + 1,
     sparse_paritycheck_vi_len: 23552,
-    sparse_paritycheck_vs_len: 7169,
+    sparse_paritycheck_vs_len: 6144 + 1024 + 1,
+    decode_bf_working_len: 6144 + 1024,
+    decode_mp_working_len: 2 * 23552,
+    output_len: (6144 + 1024)/8,
 };
 
 /// Code parameters for the TM8192 code
@@ -253,12 +297,16 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     submatrix_size: 2048,
     circulant_size: 2048/4,
     paritycheck_sum: 30720,
-    generator_len: 524288,
-    paritycheck_len: 1966080,
+
+    generator_len: 4096 * (8192 - 4096)/32,
+    paritycheck_len: (8192 + 2048) * (8192 - 4096 + 2048)/32,
     sparse_paritycheck_ci_len: 30720,
-    sparse_paritycheck_cs_len: 6145,
+    sparse_paritycheck_cs_len: 8192 - 4096 + 2048 + 1,
     sparse_paritycheck_vi_len: 30720,
-    sparse_paritycheck_vs_len: 10241,
+    sparse_paritycheck_vs_len: 8192 + 2048 + 1,
+    decode_bf_working_len: 8192 + 2048,
+    decode_mp_working_len: 2 * 30720,
+    output_len: (8192 + 2048)/8,
 };
 
 /*
@@ -272,12 +320,15 @@ pub const TM20480_PARAMS: CodeParams = CodeParams {
     submatrix_size: 2048
     circulant_size: 2048/4,
     paritycheck_sum: ,
+
     generator_len: ,
     paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
     sparse_paritycheck_vs_len: ,
+    decode_bf_working_len: ,
+    decode_mp_working_len: ,
 };
 
 /// Code parameters for the TM24576 code
@@ -288,12 +339,15 @@ pub const TM24576_PARAMS: CodeParams = CodeParams {
     submatrix_size: 4096
     circulant_size: 4096/4,
     paritycheck_sum: ,
+
     generator_len: ,
     paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
     sparse_paritycheck_vs_len: ,
+    decode_bf_working_len: ,
+    decode_mp_working_len: ,
 };
 
 /// Code parameters for the TM32768 code
@@ -304,12 +358,15 @@ pub const TM32768_PARAMS: CodeParams = CodeParams {
     submatrix_size: 8192
     circulant_size: 8192/4,
     paritycheck_sum: ,
+
     generator_len: ,
     paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
     sparse_paritycheck_vs_len: ,
+    decode_bf_working_len: ,
+    decode_mp_working_len: ,
 };
 
 */
@@ -402,24 +459,28 @@ impl LDPCCode {
     }
 
     /// Get the length of [u16] required for the sparse parity check ci array.
+    ///
     /// Equal to paritycheck_sum.
     pub fn sparse_paritycheck_ci_len(&self) -> usize {
         self.paritycheck_sum() as usize
     }
 
     /// Get the length of [u16] required for the sparse parity check cs array.
+    ///
     /// Equal to n - k + punctured_bits + 1.
     pub fn sparse_paritycheck_cs_len(&self) -> usize {
         self.n() - self.k() + self.punctured_bits() + 1
     }
 
     /// Get the length of [u16] required for the sparse parity check vi array.
+    ///
     /// Equal to paritycheck_sum.
     pub fn sparse_paritycheck_vi_len(&self) -> usize {
         self.paritycheck_sum() as usize
     }
 
     /// Get the length of [u16] required for the sparse parity check vs array.
+    ///
     /// Equal to n + punctured_bits + 1.
     pub fn sparse_paritycheck_vs_len(&self) -> usize {
         self.n() + self.punctured_bits() + 1
