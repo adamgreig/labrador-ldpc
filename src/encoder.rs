@@ -91,8 +91,10 @@ impl LDPCCode {
         assert_eq!(g.len(), self.generator_len());
         assert_eq!(data.len(), self.k()/8);
         assert_eq!(data.len() % 4, 0);
+        assert_eq!(((data.as_ptr() as *const usize) as usize) % 4, 0);
         assert_eq!(codeword.len(), self.n()/8);
         assert_eq!(codeword.len() % 4, 0);
+        assert_eq!(((codeword.as_ptr() as *const usize) as usize) % 4, 0);
 
         let k = self.k();
         let r = self.n() - self.k();
