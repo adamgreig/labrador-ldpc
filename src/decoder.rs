@@ -284,6 +284,88 @@ mod tests {
     }
 
     #[test]
+    fn test_hard_to_llrs_with_ber() {
+        let code = LDPCCode::TC128;
+        let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
+                        203, 102, 103, 120, 107,  30, 157, 169];
+        let mut llrs = vec![0f32; code.n()];
+        let ber = 0.08;
+        code.hard_to_llrs_with_ber(&hard, &mut llrs, ber);
+        let logber = f32::ln(ber);
+        assert_eq!(llrs, vec![
+             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
+            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
+            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
+             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
+             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber]);
+    }
+
+    #[test]
+    fn test_hard_to_llrs() {
+        let code = LDPCCode::TC128;
+        let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
+                        203, 102, 103, 120, 107,  30, 157, 169];
+        let mut llrs = vec![0f32; code.n()];
+        code.hard_to_llrs(&hard, &mut llrs);
+        let logber = f32::ln(0.05);
+        assert_eq!(llrs, vec![
+             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
+            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
+            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
+             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
+             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber]);
+    }
+
+    #[test]
+    fn test_llrs_to_hard() {
+        let code = LDPCCode::TC128;
+        let logber = f32::ln(0.05);
+        let llrs = vec![
+             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
+             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
+            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
+            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
+            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
+            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
+             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
+             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber];
+        let mut hard = vec![0u8; code.n()/8];
+        code.llrs_to_hard(&llrs, &mut hard);
+        assert_eq!(hard, vec![255, 254, 253, 252, 251, 250, 249, 248,
+                              203, 102, 103, 120, 107,  30, 157, 169]);
+    }
+
+    #[test]
     fn test_decode_mp() {
         let code = LDPCCode::TC128;
 
