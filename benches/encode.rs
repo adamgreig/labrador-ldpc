@@ -7,7 +7,7 @@ use labrador_ldpc::LDPCCode;
 
 #[bench]
 fn bench_encode_fast(b: &mut Bencher) {
-    let code = LDPCCode::TM8192;
+    let code = LDPCCode::TM2048;
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
     let mut g = vec![0u32; code.generator_len()];
@@ -17,12 +17,10 @@ fn bench_encode_fast(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_encode_xfast(b: &mut Bencher) {
-    let code = LDPCCode::TM8192;
+fn bench_encode_small(b: &mut Bencher) {
+    let code = LDPCCode::TM2048;
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
-    let mut g = vec![0u32; code.generator_len()];
-    code.init_generator(&mut g);
 
-    b.iter(|| code.encode_xfast(&g, &txdata, &mut txcode) );
+    b.iter(|| code.encode_small(&txdata, &mut txcode) );
 }

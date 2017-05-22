@@ -370,7 +370,7 @@ impl LDPCCode {
     }
 
     /// Get the reference to the compact generator matrix for this code
-    fn compact_generator(&self) -> &'static [u32] {
+    pub fn compact_generator(&self) -> &'static [u32] {
         match *self {
             LDPCCode::TC128  => &compact_generators::TC128_G,
             LDPCCode::TC256  => &compact_generators::TC256_G,
