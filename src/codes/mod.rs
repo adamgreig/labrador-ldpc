@@ -596,6 +596,12 @@ impl LDPCCode {
         let n = self.n();
         let m = self.submatrix_size();
 
+        assert!(m.is_power_of_two());
+
+        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
+        // to save it having to do expensive division operations
+        let modm = m - 1;
+
         let prototype = match *self {
             LDPCCode::TC128 => compact_parity_checks::TC128_H,
             LDPCCode::TC256 => compact_parity_checks::TC256_H,
@@ -630,12 +636,12 @@ impl LDPCCode {
                             }
 
                             // See if we are in the position for the rotated bit and set if so
-                            if j == (i + rot) % m {
+                            if j == (i + rot) & modm {
                                 h[idx] |= 1 << shift;
                             }
 
                             // If HS (both HI and HP) is set, we add on the I matrix (rot=0)
-                            if (subm & HS == HS) && (j == i % m) {
+                            if (subm & HS == HS) && (j == i & modm) {
                                 h[idx] ^= 1 << shift;
                             }
                         }
@@ -792,8 +798,8 @@ impl LDPCCode {
     /// check matrix. Requires that the checks `ci` and `cs` have already been initialised.
     ///
     /// See `init_sparse_paritycheck` for further details.
-    fn init_sparse_paritycheck_variables(&self, ci: &[u16], cs: &[u16],
-                                         vi: &mut[u16], vs: &mut[u16])
+    pub fn init_sparse_paritycheck_variables(&self, ci: &[u16], cs: &[u16],
+                                             vi: &mut[u16], vs: &mut[u16])
     {
         assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
         assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
@@ -839,6 +845,13 @@ impl LDPCCode {
         let k = self.k();
         let m = self.submatrix_size();
 
+        assert!(m.is_power_of_two());
+
+        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
+        // to save it having to do expensive division operations
+        let modm = m - 1;
+        let divm = m.trailing_zeros();
+
         let prototype = match *self {
             LDPCCode::TC128 => compact_parity_checks::TC128_H,
             LDPCCode::TC256 => compact_parity_checks::TC256_H,
@@ -852,9 +865,9 @@ impl LDPCCode {
         // For each check in the full parity check matrix (each row, 0..(n-k))
         for (check, cs_check) in cs.iter_mut().take(n-k).enumerate() {
             // Index of the sub-matrix for this check
-            let check_block = check / m;
+            let check_block = check >> divm;
             // Check number inside this block
-            let block_check = check % m;
+            let block_check = check & modm;
 
             // Record the start index of this check
             *cs_check = ci_idx;
@@ -862,9 +875,9 @@ impl LDPCCode {
             // For each variable of the full parity check matrix (each column)
             for variable in 0..n {
                 // Index of the sub-matrix for this variable
-                let variable_block = variable / m;
+                let variable_block = variable >> divm;
                 // variableumn number inside this block
-                let block_variable = variable % m;
+                let block_variable = variable & modm;
 
                 // Take the relevant prototype entry and extract its rotation
                 let subm = prototype[check_block][variable_block];
@@ -877,7 +890,7 @@ impl LDPCCode {
                 }
 
                 // Rotated identity matrix. Check if j==(i+r)%m.
-                if subm & HP == HP && block_variable == (block_check + rot) % m {
+                if subm & HP == HP && block_variable == (block_check + rot) & modm {
                     ci[ci_idx as usize] = variable as u16;
                     ci_idx += 1;
                 }
@@ -903,6 +916,14 @@ impl LDPCCode {
         let m = self.submatrix_size();
         let p = self.punctured_bits();
 
+        assert!(m.is_power_of_two());
+
+        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
+        // to save it having to do expensive division operations
+        let modm = m - 1;
+        let divm = m.trailing_zeros();
+        let modmd4 = (m/4) - 1;
+
         // Fetch whichever phi lookup table is appropriate for our M
         let phi_j_k = match m {
             128  => &self::compact_parity_checks::PHI_J_K_M128,
@@ -919,7 +940,7 @@ impl LDPCCode {
         // For each check in the full parity check matrix (each row)
         for (check, cs_check) in cs.iter_mut().take(n-k+p).enumerate() {
             // Check number inside this block
-            let block_check = check % m;
+            let block_check = check & modm;
 
             // Record the start index of this check
             *cs_check = ci_idx;
@@ -946,7 +967,7 @@ impl LDPCCode {
                     // set for this check and variable, and sum over the three sub matrices.
                     let mut pbit = 0;
                     for proto in prototype {
-                        let subm = proto[check / m][variable_block - variable_block_offset];
+                        let subm = proto[check >> divm][variable_block - variable_block_offset];
                         if subm == 0 {
                             // After a 0 we won't find anything further, so can stop here
                             break;
@@ -960,9 +981,11 @@ impl LDPCCode {
                             // Extract k from lower bits
                             let k = (subm & 0x3F) as usize;
                             // Compute pi(i)
-                            let pi_i = m/4 * ((theta_k[k-1] as usize + ((4*block_check)/m)) % 4) +
-                                       (phi_j_k[(4*block_check)/m][k-1] as usize + block_check)
-                                       % (m/4);
+                            let pi_i = m/4
+                                       * ((theta_k[k-1] as usize + ((4*block_check)>>divm)) % 4)
+                                       + ((phi_j_k[(4*block_check)>>divm][k-1] as usize
+                                           + block_check)
+                                          & modmd4);
                             if block_variable == pi_i {
                                 pbit ^= 1;
                             }

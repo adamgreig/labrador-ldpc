@@ -113,10 +113,9 @@ impl LDPCCode {
                         // and seeing if it's equal to a, and if so, using that message.
                         // This loop could be replaced by another index table the same size as ci,
                         // which might save time if this section proves to be slow.
-                        for j_b in cs[j]..cs[j+1] {
-                            let j_b = j_b as usize;
-                            let b = ci[j_b] as usize;
-                            if a == b {
+                        for (j_b, b) in ci[cs[j] as usize .. cs[j+1] as usize].iter().enumerate() {
+                            let j_b = cs[j] as usize + j_b;
+                            if a == *b as usize {
                                 // Sum up just the incoming messages not from i for v(a->i)
                                 if j != i {
                                     v[a_i] += u[j_b];
@@ -177,10 +176,9 @@ impl LDPCCode {
                         // associated with variable node b, and if j==i we use the message.
                         // This loop could also be replaced by another index table the same size
                         // as vi, which might be useful here.
-                        for b_j in vs[b]..vs[b+1] {
-                            let b_j = b_j as usize;
-                            let j = vi[b_j] as usize;
-                            if i == j {
+                        for (b_j, j) in vi[vs[b] as usize .. vs[b+1] as usize].iter().enumerate() {
+                            let b_j = vs[b] as usize + b_j;
+                            if i == *j as usize {
                                 sgnprod *= v[b_j].signum();
                                 let abs_v_bj = v[b_j].abs();
                                 minacc = f32::min(minacc, abs_v_bj);
@@ -384,6 +382,7 @@ mod tests {
         // Copy it and corrupt a few bits
         let mut rxcode = txcode.clone();
         rxcode[5] ^= 1<<4 | 1<<2;
+        rxcode[6] ^= 1<<5 | 1<<3;
 
         // Convert the hard data to LLRs
         let mut llrs = vec![0f32; code.n()];

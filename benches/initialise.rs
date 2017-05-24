@@ -48,23 +48,27 @@ fn bench_init_tc_sparse_paritycheck_checks(b: &mut Bencher) {
 }
 
 #[bench]
-fn bench_init_tm_sparse_paritycheck(b: &mut Bencher) {
+fn bench_init_tm_sparse_paritycheck_variables(b: &mut Bencher) {
     let code = LDPCCode::TM1280;
     let mut ci = vec![0u16; code.sparse_paritycheck_ci_len()];
     let mut cs = vec![0u16; code.sparse_paritycheck_cs_len()];
     let mut vi = vec![0u16; code.sparse_paritycheck_vi_len()];
     let mut vs = vec![0u16; code.sparse_paritycheck_vs_len()];
 
-    b.iter(|| code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs) );
+    code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
+
+    b.iter(|| code.init_sparse_paritycheck_variables(&mut ci, &mut cs, &mut vi, &mut vs) );
 }
 
 #[bench]
-fn bench_init_tc_sparse_paritycheck(b: &mut Bencher) {
+fn bench_init_tc_sparse_paritycheck_variables(b: &mut Bencher) {
     let code = LDPCCode::TC512;
     let mut ci = vec![0u16; code.sparse_paritycheck_ci_len()];
     let mut cs = vec![0u16; code.sparse_paritycheck_cs_len()];
     let mut vi = vec![0u16; code.sparse_paritycheck_vi_len()];
     let mut vs = vec![0u16; code.sparse_paritycheck_vs_len()];
 
-    b.iter(|| code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs) );
+    code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
+
+    b.iter(|| code.init_sparse_paritycheck_variables(&mut ci, &mut cs, &mut vi, &mut vs) );
 }
