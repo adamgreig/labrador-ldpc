@@ -7,7 +7,7 @@
 
 /// Compact generator matrix for the TC128 code
 ///
-/// P is 64x64, circulant_size=16, so we have 4 blocks of 2 u32 per row
+/// P is 64x64, `circulant_size`=16, so we have 4 blocks of 2 u32 per row
 pub static TC128_G: [u32; 4 * 2] = [
     0x0E69166B, 0xEF4C0BC2, 0x7766137E, 0xBB248418,
     0xC480FEB9, 0xCD53A713, 0x4EAA22FA, 0x465EEA11,
@@ -15,7 +15,7 @@ pub static TC128_G: [u32; 4 * 2] = [
 
 /// Compact generator matrix for the TC256 code
 ///
-/// P is 128x128, circulant_size=32, so we have 4 blocks of 4 u32 per row
+/// P is 128x128, `circulant_size`=32, so we have 4 blocks of 4 u32 per row
 pub static TC256_G: [u32; 4 * 4] = [
     0x73F5E839, 0x0220CE51, 0x36ED68E9, 0xF39EB162,
     0xBAC812C0, 0xBCD24379, 0x4786D928, 0x5A09095C,
@@ -25,7 +25,7 @@ pub static TC256_G: [u32; 4 * 4] = [
 
 /// Compact generator matrix for the TC512 code
 ///
-/// P is 256x256, circulant_size=64, so we have 4 blocks of 8 u32 per row
+/// P is 256x256, `circulant_size`=64, so we have 4 blocks of 8 u32 per row
 pub static TC512_G: [u32; 4 * 8] = [
     0x1D21794A, 0x22761FAE, 0x59945014, 0x257E130D,
     0x74D60540, 0x03794014, 0x2DADEB9C, 0xA25EF12E,
@@ -39,7 +39,7 @@ pub static TC512_G: [u32; 4 * 8] = [
 
 /// Compact generator matrix for the TM1280 code
 ///
-/// P is 1024x256, circulant_size=32, so we have 32 blocks of 8 u32 per row
+/// P is 1024x256, `circulant_size`=32, so we have 32 blocks of 8 u32 per row
 pub static TM1280_G: [u32; 32 * 8] = [
     0x678ECB51, 0xFE821D5C, 0xFA5F424B, 0xF55927AA, 0x3E826913, 0x32E04B0C,
     0x4F88862B, 0x803432EF, 0x42B27625, 0x9F8DA1E1, 0xF8472D1B, 0xD943D394,
@@ -88,7 +88,7 @@ pub static TM1280_G: [u32; 32 * 8] = [
 
 /// Compact generator matrix for the TM1536 code
 ///
-/// P is 1024x512, circulant_size=64, so we have 16 blocks of 16 u32 per row
+/// P is 1024x512, `circulant_size`=64, so we have 16 blocks of 16 u32 per row
 pub static TM1536_G: [u32; 16 * 16] = [
     0x51236781, 0x781D416A, 0xB0C8419F, 0xA21559A8, 0x5F14E1E4, 0xD88726F1,
     0x762F6ED6, 0xCF32F06D, 0x8ABFD971, 0xE17A0BE9, 0xA5D14774, 0x1B698D14,
@@ -137,7 +137,7 @@ pub static TM1536_G: [u32; 16 * 16] = [
 
 /// Compact generator matrix for the TM2048 code
 ///
-/// P is 1024x1024, circulant_size=128, so we have 8 blocks of 32 u32 per row
+/// P is 1024x1024, `circulant_size`=128, so we have 8 blocks of 32 u32 per row
 pub static TM2048_G: [u32; 8 * 32] = [
     0xCFA794F4, 0x9FA5A0D8, 0x8BB31D8F, 0xCA7EA8BB, 0xA7AE7EE8, 0xA68580E3,
     0xE922F9E1, 0x3359B284, 0x91F72AE8, 0xF2D6BF78, 0x30A1F83B, 0x3CDBD463,
@@ -186,7 +186,7 @@ pub static TM2048_G: [u32; 8 * 32] = [
 
 /// Compact generator matrix for the TM5120 code
 ///
-/// P is 4096x1024, circulant_size=128, so we have 32 blocks of 32 u32 per row
+/// P is 4096x1024, `circulant_size`=128, so we have 32 blocks of 32 u32 per row
 pub static TM5120_G: [u32; 32 * 32] = [
     0x473BC533, 0xA12C3596, 0xF642673D, 0x0DBF1142, 0x079A3868, 0xE1A6F556,
     0xF0DF3DCA, 0x4493AE54, 0xAE4C50F1, 0x2AEF6EED, 0xEA9BB306, 0x05F4A24C,
@@ -363,7 +363,7 @@ pub static TM5120_G: [u32; 32 * 32] = [
 
 /// Compact generator matrix for the TM6144 code
 ///
-/// P is 4096x2048, circulant_size=256, so we have 16 blocks of 64 u32 per row
+/// P is 4096x2048, `circulant_size`=256, so we have 16 blocks of 64 u32 per row
 pub static TM6144_G: [u32; 16 * 64] = [
     0x80924F64, 0x8C014F2C, 0x73889C8B, 0x87D0491F, 0xA9FA060D, 0x2902D7AC,
     0xC8B679CF, 0x61EEB5D9, 0x6BB9E90F, 0x5C157AA1, 0xBF03EF75, 0x6245D917,
@@ -540,7 +540,7 @@ pub static TM6144_G: [u32; 16 * 64] = [
 
 /// Compact generator matrix for the TM8192 code
 ///
-/// P is 4096x4096, circulant_size=512, so we have 8 blocks of 128 u32 per row
+/// P is 4096x4096, `circulant_size`=512, so we have 8 blocks of 128 u32 per row
 pub static TM8192_G: [u32; 8 * 128] = [
     0x616DB583, 0x006DB999, 0x54780CD6, 0xDFC99087, 0x72D8260D, 0x390B1D46,
     0x2A8F62DE, 0x88092161, 0x94BE0531, 0xEE408AEA, 0xF27F50F3, 0xAD71865A,

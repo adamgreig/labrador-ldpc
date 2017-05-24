@@ -150,7 +150,7 @@ pub static PHI_J_K_M128: [[u16; 26]; 4] = [
      20, 18, 31, 13, 2, 18],
 ];
 
-/// Phi constants for M=256. See docs for PHI_J_K_M128.
+/// Phi constants for M=256. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M256: [[u16; 26]; 4] = [
     [59, 18, 52, 23, 11, 7, 22, 25, 27, 30, 43, 14, 46, 62, 44, 12, 38, 47, 1,
      52, 61, 10, 55, 7, 12, 2],
@@ -162,7 +162,7 @@ pub static PHI_J_K_M256: [[u16; 26]; 4] = [
      9, 11, 23, 8, 7, 24],
 ];
 
-/// Phi constants for M=512. See docs for PHI_J_K_M128.
+/// Phi constants for M=512. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M512: [[u16; 26]; 4] = [
     [16, 103, 105, 0, 50, 29, 115, 30, 92, 78, 70, 66, 39, 84, 79, 70, 29, 32,
      45, 113, 86, 1, 42, 118, 33, 126],
@@ -174,7 +174,7 @@ pub static PHI_J_K_M512: [[u16; 26]; 4] = [
      116, 31, 127, 98, 23, 38, 18, 62],
 ];
 
-/// Phi constants for M=1024. See docs for PHI_J_K_M128.
+/// Phi constants for M=1024. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M1024: [[u16; 26]; 4] = [
     [160, 241, 185, 251, 209, 103, 90, 184, 248, 12, 111, 66, 173, 42, 157,
      174, 104, 144, 43, 181, 250, 202, 68, 177, 170, 89],
@@ -186,7 +186,7 @@ pub static PHI_J_K_M1024: [[u16; 26]; 4] = [
      115, 248, 62, 26, 140, 121, 12, 41, 249],
 ];
 
-/// Phi constants for M=2048. See docs for PHI_J_K_M128.
+/// Phi constants for M=2048. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M2048: [[u16; 26]; 4] = [
     [108, 126, 238, 481, 96, 28, 59, 225, 323, 28, 386, 305, 34, 510, 147, 199,
      347, 391, 165, 414, 97, 158, 86, 168, 506, 489],
@@ -198,7 +198,7 @@ pub static PHI_J_K_M2048: [[u16; 26]; 4] = [
      475, 85, 419, 459, 468, 209, 311, 211, 510, 320],
 ];
 
-/// Phi constants for M=4096. See docs for PHI_J_K_M128.
+/// Phi constants for M=4096. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M4096: [[u16; 26]; 4] = [
     [226, 618, 404, 32, 912, 950, 534, 63, 971, 304, 409, 708, 719, 176, 743,
      759, 674, 958, 984, 11, 413, 925, 687, 752, 867, 323],
@@ -210,7 +210,7 @@ pub static PHI_J_K_M4096: [[u16; 26]; 4] = [
      462, 175, 715, 537, 722, 37, 488, 179, 430, 264],
 ];
 
-/// Phi constants for M=8192. See docs for PHI_J_K_M128.
+/// Phi constants for M=8192. See docs for `PHI_J_K_M128`.
 pub static PHI_J_K_M8192: [[u16; 26]; 4] = [
     [1148, 2032, 249, 1807, 485, 1044, 717, 873, 364, 1926, 1241, 1769, 532,
      768, 1138, 965, 141, 1527, 505, 1312, 1840, 709, 1427, 989, 1925, 270],

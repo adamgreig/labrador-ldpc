@@ -5,7 +5,7 @@
 ///
 /// They are in a compact form: for each systematic generator matrix, we take just the
 /// parity bits (the n-k columns on the right), and then we take just the first row for
-/// each circulant (i.e. instead of k rows, we take k/circulant_size rows), and then
+/// each circulant (i.e. instead of `k` rows, we take `k/circulant_size` rows), and then
 /// pack the bits for that row into `u32`s.
 ///
 /// This is relatively easy to unpack at runtime into a full size generator matrix,
@@ -26,7 +26,8 @@ mod compact_parity_checks;
 /// The TM codes are the Telemetry codes from CCSDS document 131.0-B-2.
 /// https://public.ccsds.org/default.aspx
 ///
-/// For code parameters see the const CodeParams structs later in this module: `TC128_PARAMS` etc.
+/// For code parameters see the const `CodeParams` structs later in this module:
+/// `TC128_PARAMS` etc.
 #[derive(Debug)]
 pub enum LDPCCode {
     /// n=128 k=64 r=1/2
@@ -710,17 +711,18 @@ impl LDPCCode {
                         // For each row in the MxM sub-matrix
                         for i in 0..m {
 
-                            // Either subm is an identity, so j=i, or a permutation
-                            let mut j = i;
-
-                            if subm & HP == HP {
+                            // subm is either a permutation, j=pi(i), or an identity, j=i
+                            let j = if subm & HP == HP {
                                 // Permutation submatrix:
                                 // Extract k from lower bits
                                 let k = (subm & 0x3F) as usize;
+
                                 // Compute pi(i)
-                                j = m/4 * ((theta_k[k-1] as usize + ((4*i)/m)) % 4) +
-                                    (phi_j_k[(4*i)/m][k-1] as usize + i) % (m/4);
-                            }
+                                m/4 * ((theta_k[k-1] as usize + ((4*i)/m)) % 4) +
+                                    (phi_j_k[(4*i)/m][k-1] as usize + i) % (m/4)
+                            } else {
+                                i
+                            };
 
                             // Compute the index of the u32 holding bit j, and the shift into
                             // that u32 for bit j, and then add 1 to that bit.
@@ -850,19 +852,15 @@ impl LDPCCode {
                 let rot = (subm & 0x3F) as usize;
 
                 // For the identity matrix just check if j==i.
-                if subm & HI == HI {
-                    if block_variable == block_check {
-                        ci[ci_idx as usize] = variable as u16;
-                        ci_idx += 1;
-                    }
+                if subm & HI == HI && block_variable == block_check {
+                    ci[ci_idx as usize] = variable as u16;
+                    ci_idx += 1;
                 }
 
                 // Rotated identity matrix. Check if j==(i+r)%m.
-                if subm & HP == HP {
-                    if block_variable == (block_check + rot) % m {
-                        ci[ci_idx as usize] = variable as u16;
-                        ci_idx += 1;
-                    }
+                if subm & HP == HP && block_variable == (block_check + rot) % m {
+                    ci[ci_idx as usize] = variable as u16;
+                    ci_idx += 1;
                 }
             }
 

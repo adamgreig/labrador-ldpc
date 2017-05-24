@@ -210,7 +210,7 @@ impl LDPCCode {
         }
 
         // If we finished the loop, we ran out of iterations :(
-        return (false, MP_MAX_ITERS);
+        (false, MP_MAX_ITERS)
     }
 
     /// Convert hard information and a channel BER into appropriate LLRs.
