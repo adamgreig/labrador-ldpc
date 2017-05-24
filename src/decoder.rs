@@ -63,7 +63,6 @@ impl LDPCCode {
         assert_eq!(working.len(), self.decode_mp_working_len());
 
         let n = self.n();
-        let k = self.k();
         let p = self.punctured_bits();
 
         // Initialise working area to all zeros
@@ -134,7 +133,9 @@ impl LDPCCode {
 
                     // Our min sum correction trick is to zero any messages that have changed
                     // sign since last time, as per Savin 2009 http://arxiv.org/abs/0803.1090v2
-                    if prev_v_ai != 0.0 && v[a_i].signum() != prev_v_ai.signum() {
+                    if prev_v_ai != 0.0 &&
+                       v[a_i].is_sign_positive() != prev_v_ai.is_sign_positive()
+                    {
                         v[a_i] = 0.0;
                     }
                 }
@@ -146,25 +147,25 @@ impl LDPCCode {
                 }
             }
 
-            // Update check nodes' messages to variable nodes.
+            // Update check nodes' messages to variable nodes (i=0..(n-k+p)).
             // For each check node, for each variable node connected to it,
             // initialise the message u(i->a) to f32::MAX and then find the minimum of all
             // incoming messages as well as the product of all their signs.
             // Additionally we use this loop to keep track of the parity sum for this check
             // node under hard decoding, and use that to see if the overall message has been
             // decoded yet.
-            for i in 0..(n - k + p) {
+            for (i, cs_ss) in cs.windows(2).enumerate() {
                 let mut parity = 0;
+                let (cs_start, cs_end) = (cs_ss[0] as usize, cs_ss[1] as usize);
 
                 // For each variable node a connected to check node i
-                for i_a in cs[i]..cs[i+1] {
-                    let i_a = i_a as usize;
+                for i_a in cs_start..cs_end {
                     let a = ci[i_a] as usize;
                     let mut sgnprod = 1.0f32;
                     let mut minacc = f32::MAX;
 
                     // For each variable node b connected to check node i
-                    for b in &ci[cs[i] as usize..cs[i+1] as usize] {
+                    for b in &ci[cs_start..cs_end] {
                         let b = *b as usize;
                         // Don't process the message from the current variable node
                         if b == a {
@@ -193,7 +194,7 @@ impl LDPCCode {
                     // Update u(i->a) with our accumulated minimum and appropriate sign.
                     u[i_a] = sgnprod * minacc;
 
-                    // Work out this node's parity 
+                    // Work out this node's parity
                     parity += (output[a/8] >> (7 - (a%8))) & 1;
                 }
 

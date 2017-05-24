@@ -1,5 +1,8 @@
 //! This module provides encoding functions for turning data into codewords.
 
+// We have a couple of expressions with +0 for clarity of where the 0 comes from
+#![cfg_attr(feature = "cargo-clippy", allow(identity_op))]
+
 use ::codes::LDPCCode;
 
 impl LDPCCode {

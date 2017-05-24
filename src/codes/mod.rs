@@ -1,6 +1,9 @@
 //! This module contains the available LDPC codes, and the associated constants and methods to
 //! load their generator and parity check matrices.
 
+// We have a bunch of expressions with +0 for clarity of where the 0 comes from
+#![cfg_attr(feature = "cargo-clippy", allow(identity_op))]
+
 /// This module contains the constants representing the generator matrices.
 ///
 /// They are in a compact form: for each systematic generator matrix, we take just the
@@ -759,6 +762,11 @@ impl LDPCCode {
     pub fn init_sparse_paritycheck(&self, ci: &mut [u16], cs: &mut [u16],
                                    vi: &mut [u16], vs: &mut [u16])
     {
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
+        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+
         self.init_sparse_paritycheck_checks(ci, cs);
         self.init_sparse_paritycheck_variables(ci, cs, vi, vs);
     }
@@ -768,6 +776,9 @@ impl LDPCCode {
     ///
     /// See `init_sparse_paritycheck` for further details.
     pub fn init_sparse_paritycheck_checks(&self, ci: &mut [u16], cs: &mut[u16]) {
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+
         match *self {
             LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512  =>
                 self.init_sparse_paritycheck_checks_tc(ci, cs),
@@ -784,21 +795,26 @@ impl LDPCCode {
     fn init_sparse_paritycheck_variables(&self, ci: &[u16], cs: &[u16],
                                          vi: &mut[u16], vs: &mut[u16])
     {
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
+        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+
         let n = self.n();
-        let k = self.k();
         let p = self.punctured_bits();
 
         let mut vi_idx = 0usize;
 
-        // For each variable of the full parity check matrix
-        for variable in 0..(n+p) {
+        // For each variable of the full parity check matrix (0..n+p)
+        for (variable, vs_variable) in vs.iter_mut().take(n+p).enumerate() {
             // Record the starting index for this check
-            vs[variable] = vi_idx as u16;
+            *vs_variable = vi_idx as u16;
 
-            // For each check of the full parity check matrix (each row)
-            for check in 0..(n-k+p) {
-                // Go through the indices for variables involved in this check
-                for ci_variable in ci[cs[check] as usize .. cs[check+1] as usize].iter() {
+            // For each (start, stop) pair in cs,
+            // aka each check (or row) of the parity check matrix, 0 through n-k+p
+            for (check, cs_ss) in cs.windows(2).enumerate() {
+                // Go through each variable this check is connected to
+                for ci_variable in ci[cs_ss[0] as usize .. cs_ss[1] as usize].iter() {
                     // If we see ourselves in this row's connections, then
                     // this check should be listed against our variable
                     if *ci_variable as usize == variable {
@@ -816,6 +832,9 @@ impl LDPCCode {
     fn init_sparse_paritycheck_checks_tc(&self, ci: &mut [u16], cs: &mut [u16]) {
         use self::compact_parity_checks::{HI, HP};
 
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+
         let n = self.n();
         let k = self.k();
         let m = self.submatrix_size();
@@ -830,15 +849,15 @@ impl LDPCCode {
 
         let mut ci_idx = 0;
 
-        // For each check in the full parity check matrix (each row)
-        for check in 0..(n - k) {
+        // For each check in the full parity check matrix (each row, 0..(n-k))
+        for (check, cs_check) in cs.iter_mut().take(n-k).enumerate() {
             // Index of the sub-matrix for this check
             let check_block = check / m;
             // Check number inside this block
             let block_check = check % m;
 
             // Record the start index of this check
-            cs[check] = ci_idx;
+            *cs_check = ci_idx;
 
             // For each variable of the full parity check matrix (each column)
             for variable in 0..n {
@@ -872,8 +891,12 @@ impl LDPCCode {
 
     /// Initialise sparse check nodes (`ci` and `cs`) for TM codes.
     fn init_sparse_paritycheck_checks_tm(&self, ci: &mut [u16], cs: &mut [u16]) {
-        let mut ci_idx = 0;
         use self::compact_parity_checks::{HI, HP, TM_R12_H, TM_R23_H, TM_R45_H};
+
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+
+        let mut ci_idx = 0;
 
         let n = self.n();
         let k = self.k();
@@ -894,12 +917,12 @@ impl LDPCCode {
         let theta_k = &self::compact_parity_checks::THETA_K;
 
         // For each check in the full parity check matrix (each row)
-        for check in 0..(n - k + p) {
+        for (check, cs_check) in cs.iter_mut().take(n-k+p).enumerate() {
             // Check number inside this block
             let block_check = check % m;
 
             // Record the start index of this check
-            cs[check] = ci_idx;
+            *cs_check = ci_idx;
 
             // For each block (submatrix) in the prototype matrix row
             for variable_block in 0..((n+p)/m) {
