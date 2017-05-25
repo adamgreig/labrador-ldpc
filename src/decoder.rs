@@ -308,15 +308,15 @@ impl LDPCCode {
                 let mut votes = 0;
 
                 // For each check this bit is associated with
-                for a_i in vs[a]..vs[a+1] {
-                    let i = vi[a_i as usize] as usize;
+                for i in &vi[vs[a] as usize .. vs[a+1] as usize] {
+                    let i = *i as usize;
                     let mut parity = 0;
 
                     // See what the check parity is, and quit without voting if this check has
                     // any other erasures
                     let mut only_one_erasure = true;
-                    for i_b in cs[i]..cs[i+1] {
-                        let b = ci[i_b as usize] as usize;
+                    for b in &ci[cs[i] as usize .. cs[i+1] as usize] {
+                        let b = *b as usize;
 
                         // Skip if this is the bit we're currently considering
                         if a == b {

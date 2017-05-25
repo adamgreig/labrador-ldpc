@@ -64,5 +64,5 @@ fn bench_decode_bf(b: &mut Bencher) {
     let mut output = vec![0u8; code.output_len()];
 
     // Run decoder
-    b.iter(|| code.decode_bf(&ci, &cs, Some(&vi), Some(&vs), &rxcode, &mut output, &mut working));
+    b.iter(|| for _ in 0..100 { code.decode_bf(&ci, &cs, Some(&vi), Some(&vs), &rxcode, &mut output, &mut working); });
 }

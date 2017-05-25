@@ -6,3 +6,6 @@ description = "Encoders and decoders for LDPC error correcting codes"
 keywords = ["ldpc", "ecc", "labrador"]
 categories = ["embedded", "no-std"]
 license = "MIT"
+
+[profile.release]
+debug=true
