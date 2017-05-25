@@ -1,6 +1,20 @@
 //! This module provides decoding functions for turning codewords into data.
 
+use core::f32;
+
 use ::codes::LDPCCode;
+
+/// Ugh gross yuck.
+///
+/// No `f32::abs()` available with `no_std`, and it's not worth bringing in some
+/// dependency just to get it. This is however used right in the hottest decoder
+/// loop and it's so much faster than the obvious if f < 0 { -f } else { f }.
+fn fabsf(f: f32) -> f32 {
+    unsafe {
+        let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFFFFFF;
+        *((&x as *const u32) as *const f32)
+    }
+}
 
 const MP_MAX_ITERS: usize = 20;
 
@@ -48,12 +62,6 @@ impl LDPCCode {
     pub fn decode_mp(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
                      llrs: &[f32], output: &mut [u8], working: &mut [f32]) -> (bool, usize)
     {
-        // Needed for f32::MAX
-        #[cfg(no_std)]
-        use core::f32;
-        #[cfg(not(no_std))]
-        use std::f32;
-
         assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
         assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
         assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
@@ -132,9 +140,7 @@ impl LDPCCode {
 
                     // Our min sum correction trick is to zero any messages that have changed
                     // sign since last time, as per Savin 2009 http://arxiv.org/abs/0803.1090v2
-                    if prev_v_ai != 0.0 &&
-                       v[a_i].is_sign_positive() != prev_v_ai.is_sign_positive()
-                    {
+                    if prev_v_ai != 0.0 && (v[a_i] >= 0.0) != (prev_v_ai >= 0.0) {
                         v[a_i] = 0.0;
                     }
                 }
@@ -179,9 +185,13 @@ impl LDPCCode {
                         for (b_j, j) in vi[vs[b] as usize .. vs[b+1] as usize].iter().enumerate() {
                             let b_j = vs[b] as usize + b_j;
                             if i == *j as usize {
-                                sgnprod *= v[b_j].signum();
-                                let abs_v_bj = v[b_j].abs();
-                                minacc = f32::min(minacc, abs_v_bj);
+                                if v[b_j] < 0.0 {
+                                    sgnprod = -sgnprod;
+                                }
+                                let abs_v_bj = fabsf(v[b_j]);
+                                if abs_v_bj < minacc {
+                                    minacc = abs_v_bj;
+                                }
 
                                 // As soon as we find ourselves, we can stop looking.
                                 break;
@@ -216,29 +226,19 @@ impl LDPCCode {
     ///
     /// Can be used to feed the message passing algorithm soft-ish information.
     ///
+    /// `llr` is the log likelihood ratio to use for 1-bits, and must be negative.
+    /// If you know the probability of a bit being wrong, P(X=1|Y=0)=ε, then
+    /// `llr` is ln(ε/(1-ε)). It doesn't vastly matter if you don't know, try `llr`=-3.
+    ///
     /// `input` must be n/8 long, `llrs` must be n long.
-    pub fn hard_to_llrs_with_ber(&self, input: &[u8], llrs: &mut [f32], ber: f32) {
+    pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32], llr: f32) {
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(llrs.len(), self.n());
-        let logber = f32::ln(ber);
         for (idx, byte) in input.iter().enumerate() {
             for i in 0..8 {
-                if (byte >> (7-i)) & 1 == 1 {
-                    llrs[idx*8 + i] = logber;
-                } else {
-                    llrs[idx*8 + i] = -logber;
-                }
+                llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { llr } else { -llr };
             }
         }
-    }
-
-    /// Convert hard information into arbitrary LLRs.
-    ///
-    /// Can be used to feed the message passing algorithm even if you only have hard information.
-    ///
-    /// `input` must be n/8 long, `llrs` must be n long.
-    pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32]) {
-        self.hard_to_llrs_with_ber(input, llrs, 0.05);
     }
 
     /// Convert LLRs into hard information.
@@ -259,6 +259,8 @@ impl LDPCCode {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
     use ::codes::{LDPCCode, CODES, PARAMS};
 
     #[test]
@@ -283,81 +285,53 @@ mod tests {
     }
 
     #[test]
-    fn test_hard_to_llrs_with_ber() {
-        let code = LDPCCode::TC128;
-        let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
-                        203, 102, 103, 120, 107,  30, 157, 169];
-        let mut llrs = vec![0f32; code.n()];
-        let ber = 0.08;
-        code.hard_to_llrs_with_ber(&hard, &mut llrs, ber);
-        let logber = f32::ln(ber);
-        assert_eq!(llrs, vec![
-             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
-            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
-            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
-             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
-             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber]);
-    }
-
-    #[test]
     fn test_hard_to_llrs() {
         let code = LDPCCode::TC128;
         let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
                         203, 102, 103, 120, 107,  30, 157, 169];
         let mut llrs = vec![0f32; code.n()];
-        code.hard_to_llrs(&hard, &mut llrs);
-        let logber = f32::ln(0.05);
+        let llr = -3.0;
+        code.hard_to_llrs(&hard, &mut llrs, llr);
         assert_eq!(llrs, vec![
-             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
-            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
-            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
-             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
-             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber]);
+             llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
+             llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
+             llr,  llr,  llr,  llr,  llr,  llr, -llr,  llr,
+             llr,  llr,  llr,  llr,  llr,  llr, -llr, -llr,
+             llr,  llr,  llr,  llr,  llr, -llr,  llr,  llr,
+             llr,  llr,  llr,  llr,  llr, -llr,  llr, -llr,
+             llr,  llr,  llr,  llr,  llr, -llr, -llr,  llr,
+             llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
+             llr,  llr, -llr, -llr,  llr, -llr,  llr,  llr,
+            -llr,  llr,  llr, -llr, -llr,  llr,  llr, -llr,
+            -llr,  llr,  llr, -llr, -llr,  llr,  llr,  llr,
+            -llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
+            -llr,  llr,  llr, -llr,  llr, -llr,  llr,  llr,
+            -llr, -llr, -llr,  llr,  llr,  llr,  llr, -llr,
+             llr, -llr, -llr,  llr,  llr,  llr, -llr,  llr,
+             llr, -llr,  llr, -llr,  llr, -llr, -llr,  llr]);
     }
 
     #[test]
     fn test_llrs_to_hard() {
         let code = LDPCCode::TC128;
-        let logber = f32::ln(0.05);
+        let llr = -3.0;
         let llrs = vec![
-             logber,  logber,  logber,  logber,  logber,  logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber,  logber, -logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber,  logber, -logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber,  logber,
-             logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-             logber,  logber, -logber, -logber,  logber, -logber,  logber,  logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber, -logber,
-            -logber,  logber,  logber, -logber, -logber,  logber,  logber,  logber,
-            -logber,  logber,  logber,  logber,  logber, -logber, -logber, -logber,
-            -logber,  logber,  logber, -logber,  logber, -logber,  logber,  logber,
-            -logber, -logber, -logber,  logber,  logber,  logber,  logber, -logber,
-             logber, -logber, -logber,  logber,  logber,  logber, -logber,  logber,
-             logber, -logber,  logber, -logber,  logber, -logber, -logber,  logber];
+             llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
+             llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
+             llr,  llr,  llr,  llr,  llr,  llr, -llr,  llr,
+             llr,  llr,  llr,  llr,  llr,  llr, -llr, -llr,
+             llr,  llr,  llr,  llr,  llr, -llr,  llr,  llr,
+             llr,  llr,  llr,  llr,  llr, -llr,  llr, -llr,
+             llr,  llr,  llr,  llr,  llr, -llr, -llr,  llr,
+             llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
+             llr,  llr, -llr, -llr,  llr, -llr,  llr,  llr,
+            -llr,  llr,  llr, -llr, -llr,  llr,  llr, -llr,
+            -llr,  llr,  llr, -llr, -llr,  llr,  llr,  llr,
+            -llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
+            -llr,  llr,  llr, -llr,  llr, -llr,  llr,  llr,
+            -llr, -llr, -llr,  llr,  llr,  llr,  llr, -llr,
+             llr, -llr, -llr,  llr,  llr,  llr, -llr,  llr,
+             llr, -llr,  llr, -llr,  llr, -llr, -llr,  llr];
         let mut hard = vec![0u8; code.n()/8];
         code.llrs_to_hard(&llrs, &mut hard);
         assert_eq!(hard, vec![255, 254, 253, 252, 251, 250, 249, 248,
@@ -386,7 +360,7 @@ mod tests {
 
         // Convert the hard data to LLRs
         let mut llrs = vec![0f32; code.n()];
-        code.hard_to_llrs(&rxcode, &mut llrs);
+        code.hard_to_llrs(&rxcode, &mut llrs, -3.0);
 
         // Allocate working area and output area
         let mut working = vec![0f32; code.decode_mp_working_len()];

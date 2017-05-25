@@ -57,7 +57,7 @@ fn bench_init_tm_sparse_paritycheck_variables(b: &mut Bencher) {
 
     code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
 
-    b.iter(|| code.init_sparse_paritycheck_variables(&mut ci, &mut cs, &mut vi, &mut vs) );
+    b.iter(|| code.init_sparse_paritycheck_variables(&ci, &cs, &mut vi, &mut vs) );
 }
 
 #[bench]
@@ -70,5 +70,5 @@ fn bench_init_tc_sparse_paritycheck_variables(b: &mut Bencher) {
 
     code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
 
-    b.iter(|| code.init_sparse_paritycheck_variables(&mut ci, &mut cs, &mut vi, &mut vs) );
+    b.iter(|| code.init_sparse_paritycheck_variables(&ci, &cs, &mut vi, &mut vs) );
 }

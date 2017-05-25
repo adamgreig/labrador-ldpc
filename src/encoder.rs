@@ -3,6 +3,8 @@
 // We have a couple of expressions with +0 for clarity of where the 0 comes from
 #![cfg_attr(feature = "cargo-clippy", allow(identity_op))]
 
+use core::slice;
+
 use ::codes::LDPCCode;
 
 impl LDPCCode {
@@ -86,11 +88,6 @@ impl LDPCCode {
     pub fn encode_fast<'data, 'codeword>(&self, g: &[u32], data: &'data [u8],
                                           codeword: &'codeword mut [u8])
     {
-        #[cfg(no_std)]
-        use core::slice;
-        #[cfg(not(no_std))]
-        use std::slice;
-
         assert_eq!(g.len(), self.generator_len());
         assert_eq!(data.len(), self.k()/8);
         assert_eq!(data.len() % 4, 0);
@@ -188,6 +185,8 @@ impl LDPCCode {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
     use ::codes::LDPCCode;
 
     #[test]

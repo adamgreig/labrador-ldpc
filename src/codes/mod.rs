@@ -753,6 +753,7 @@ impl LDPCCode {
     /// Initialises the sparse representation of the parity check matrix.
     ///
     /// The sparse representation consists of four arrays:
+    ///
     /// * `ci` and `vi` contain the indices of the non-zero entries along each row (check nodes)
     ///   and column (variable nodes) of the full parity check matrix, allowing iteration through
     ///   the parity matrix connections from check to variable node or from variable to check node.
@@ -1008,6 +1009,8 @@ impl LDPCCode {
 
 #[cfg(test)]
 mod tests {
+    use std::prelude::v1::*;
+
     use super::{CODES, PARAMS};
 
     fn crc32_u32(data: &[u32]) -> u32 {
