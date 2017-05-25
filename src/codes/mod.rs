@@ -25,9 +25,9 @@ mod compact_parity_checks;
 
 /// Available LDPC codes.
 ///
-/// The TC codes are the Telecommand codes from CCSDS document 231.1-O-1.
-/// The TM codes are the Telemetry codes from CCSDS document 131.0-B-2.
-/// https://public.ccsds.org/default.aspx
+/// * The TC codes are the Telecommand LDPC codes from CCSDS document 231.1-O-1.
+/// * The TM codes are the Telemetry LDPC codes from CCSDS document 131.0-B-2.
+/// * For full details please see: https://public.ccsds.org/default.aspx
 ///
 /// For code parameters see the const `CodeParams` structs later in this module:
 /// `TC128_PARAMS` etc.
@@ -71,12 +71,6 @@ pub enum LDPCCode {
     // /// n=32768 k=16384 r=1/2
     //TM32768,
 }
-
-pub const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
-                                   LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
-                                   LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
-                                   //LDPCCode::TM20480, LDPCCode::TM24576, LDPCCode::TM32768,
-];
 
 /// Parameters for a given LDPC code.
 pub struct CodeParams {
@@ -375,12 +369,6 @@ pub const TM32768_PARAMS: CodeParams = CodeParams {
 
 */
 
-pub const PARAMS: [CodeParams; 9] = [TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                                     TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                                     TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
-                                     //TM20480_PARAMS, TM24576_PARAMS, TM32768_PARAMS,
-];
-
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
     pub fn params(&self) -> CodeParams {
@@ -501,6 +489,9 @@ impl LDPCCode {
     /// Note that this will only initialise the parity part of G, and not the
     /// identity matrix, since all supported codes are systematic. This matches
     /// what's expected by the non-compact encoder function.
+    ///
+    /// ## Panics
+    /// * `g.len()` must be exactly `self.generator_len()`.
     pub fn init_generator(&self, g: &mut [u32]) {
         assert_eq!(g.len(), self.generator_len());
 
@@ -570,6 +561,9 @@ impl LDPCCode {
     /// (available as a const), or `LDPCCode.paritycheck_len()` (at runtime).
     ///
     /// This is not used by any of the decoders but might be useful in future or to debug.
+    ///
+    /// ## Panics
+    /// * `h.len()` must be exactly `self.paritycheck_len()`.
     pub fn init_paritycheck(&self, h: &mut [u32]) {
         assert_eq!(h.len(), self.paritycheck_len());
 
@@ -766,6 +760,12 @@ impl LDPCCode {
     /// The references to `ci`, `cs`, `vi`, and `vs` must all be preallocated to the correct size,
     /// available as a `const` in `CodeParams.sparse_paritycheck_ci_len` etc, and at runtime
     /// from `LDPCCode.sparse_paritycheck_ci_len()` etc.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
+    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
+    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
     pub fn init_sparse_paritycheck(&self, ci: &mut [u16], cs: &mut [u16],
                                    vi: &mut [u16], vs: &mut [u16])
     {
@@ -782,6 +782,10 @@ impl LDPCCode {
     /// check matrix, useful for the bit flipping decoder which does not need `vi` or `vs`.
     ///
     /// See `init_sparse_paritycheck` for further details.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
     pub fn init_sparse_paritycheck_checks(&self, ci: &mut [u16], cs: &mut[u16]) {
         assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
         assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
@@ -799,6 +803,12 @@ impl LDPCCode {
     /// check matrix. Requires that the checks `ci` and `cs` have already been initialised.
     ///
     /// See `init_sparse_paritycheck` for further details.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
+    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
+    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
     pub fn init_sparse_paritycheck_variables(&self, ci: &[u16], cs: &[u16],
                                              vi: &mut[u16], vs: &mut[u16])
     {
@@ -1011,7 +1021,20 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use super::{CODES, PARAMS};
+    use super::{LDPCCode, CodeParams,
+                TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
+                TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
+                TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
+
+    const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
+                                   LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
+                                   LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
+    ];
+
+    const PARAMS: [CodeParams; 9] = [TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
+                                     TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
+                                     TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
+    ];
 
     fn crc32_u32(data: &[u32]) -> u32 {
         let mut crc = 0xFFFFFFFFu32;

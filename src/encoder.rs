@@ -12,7 +12,11 @@ impl LDPCCode {
     ///
     /// This is slower than `encode_fast` but doesn't require `g`.
     ///
-    /// `data` must be k/8 long, `codeword` must be n/8 long.
+    /// `data` must be k/8 long, `codeword` must be pre-allocated to n/8 long.
+    ///
+    /// ## Panics
+    /// * `data.len()` must be exactly `self.k() / 8`.
+    /// * `codeword.len()` must be exactly `self.n() / 8`.
     pub fn encode_small(&self, data: &[u8], codeword: &mut [u8]) {
         assert_eq!(data.len(), self.k()/8);
         assert_eq!(codeword.len(), self.n()/8);
@@ -85,8 +89,21 @@ impl LDPCCode {
     /// Additionally both `data` and `codeword` must be 32-bit aligned.
     ///
     /// The lifetimes are just for internal use.
+    ///
+    /// This function is a lot quicker than `encode_fast_safe` but does use some unsafe
+    /// code which requires that `data` and `codeword` have 32-bit alignment. If you
+    /// cannot meet this requirement, consider using `encode_fast_unaligned` which is
+    /// maybe half the speed but does not require aligned data or perform any unsafe
+    /// operations.
+    ///
+    /// ## Panics
+    /// * `g` must be exactly `self.generator_len()` long
+    /// * `data.len()` must be exactly `self.k() / 8`.
+    /// * `codeword.len()` must be exactly `self.n() / 8`.
+    /// * `data` must have 32-bit alignment
+    /// * `codeword` must have 32-bit alignment
     pub fn encode_fast<'data, 'codeword>(&self, g: &[u32], data: &'data [u8],
-                                          codeword: &'codeword mut [u8])
+                                         codeword: &'codeword mut [u8])
     {
         assert_eq!(g.len(), self.generator_len());
         assert_eq!(data.len(), self.k()/8);
@@ -144,7 +161,15 @@ impl LDPCCode {
     ///
     /// `g` must have been initialised using `init_generator_matrix()`,
     /// `data` must be k/8 long, and `codeword` must be n/8 long.
-    pub fn encode_fast_safe(&self, g: &[u32], data: &[u8], codeword: &mut [u8]) {
+    ///
+    /// This function is slower than `encode_fast`, but does not impose any
+    /// requirements on the alignment of `data` or `codeword`.
+    ///
+    /// ## Panics
+    /// * `g` must be exactly `self.generator_len()` long
+    /// * `data.len()` must be exactly `self.k() / 8`.
+    /// * `codeword.len()` must be exactly `self.n() / 8`.
+    pub fn encode_fast_unaligned(&self, g: &[u32], data: &[u8], codeword: &mut [u8]) {
         assert_eq!(g.len(), self.generator_len());
         assert_eq!(data.len(), self.k()/8);
         assert_eq!(codeword.len(), self.n()/8);

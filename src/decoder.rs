@@ -51,6 +51,7 @@ impl LDPCCode {
     /// can use `decode_hard_to_llrs` to generate arbitrary LLRs from the hard information.
     ///
     /// Requires:
+    ///
     /// * `ci`, `cs`, `vi`, `vs` must all be initialised from from `init_sparse_paritycheck()`,
     /// * `llrs` must be `n` long, with positive numbers more likely to be 0.
     /// * `output` must be allocated to (n+p)/8 bytes, of which the first k/8 bytes will be set
@@ -59,6 +60,15 @@ impl LDPCCode {
     ///   `decode_mp_working_len` elements, equal to 2*paritycheck_sum.
     ///
     /// Returns decoding success and the number of iterations run for.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
+    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
+    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
+    /// * `llrs.len()` must be exactly `self.n()`
+    /// * `output.len()` must be exactly `self.output_len()`.
+    /// * `working.len()` must be exactly `self.decode_mp_working_len()`.
     pub fn decode_mp(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
                      llrs: &[f32], output: &mut [u8], working: &mut [f32]) -> (bool, usize)
     {
@@ -67,7 +77,7 @@ impl LDPCCode {
         assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
         assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
         assert_eq!(llrs.len(), self.n());
-        assert_eq!(output.len(), (self.n() + self.punctured_bits()) / 8);
+        assert_eq!(output.len(), self.output_len());
         assert_eq!(working.len(), self.decode_mp_working_len());
 
         let n = self.n();
@@ -231,6 +241,10 @@ impl LDPCCode {
     /// `llr` is ln(ε/(1-ε)). It doesn't vastly matter if you don't know, try `llr`=-3.
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
+    ///
+    /// ## Panics
+    /// * `input.len()` must be exactly `self.n()/8`
+    /// * `llrs.len()` must be exactly `self.n()`
     pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32], llr: f32) {
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(llrs.len(), self.n());
@@ -244,6 +258,10 @@ impl LDPCCode {
     /// Convert LLRs into hard information.
     ///
     /// `llrs` must be n long, `output` must be n/8 long.
+    ///
+    /// ## Panics
+    /// * `input.len()` must be exactly `self.n()/8`
+    /// * `llrs.len()` must be exactly `self.n()`
     pub fn llrs_to_hard(&self, llrs: &[f32], output: &mut [u8]) {
         for o in &mut output[..] {
             *o = 0;
@@ -261,7 +279,20 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use ::codes::{LDPCCode, CODES, PARAMS};
+    use ::codes::{LDPCCode, CodeParams,
+                  TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
+                  TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
+                  TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
+
+    const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
+                                   LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
+                                   LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
+    ];
+
+    const PARAMS: [CodeParams; 9] = [TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
+                                     TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
+                                     TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
+    ];
 
     #[test]
     fn test_decode_mp_working_len() {
