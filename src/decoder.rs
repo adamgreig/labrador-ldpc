@@ -14,7 +14,7 @@ use ::codes::LDPCCode;
 ///
 /// No `f32::abs()` available with `no_std`, and it's not worth bringing in some
 /// dependency just to get it. This is however used right in the hottest decoder
-/// loop and it's so much faster than the obvious if f < 0 { -f } else { f }.
+/// loop and it's so much faster than the obvious `if f < 0 { -f } else { f }`.
 fn fabsf(f: f32) -> f32 {
     unsafe {
         let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFFFFFF;
@@ -23,6 +23,8 @@ fn fabsf(f: f32) -> f32 {
 }
 
 const MP_MAX_ITERS: usize = 20;
+const BF_MAX_ITERS: usize = 20;
+const ERASURE_MAX_ITERS: usize = 16;
 
 impl LDPCCode {
 
@@ -238,6 +240,225 @@ impl LDPCCode {
         (false, MP_MAX_ITERS)
     }
 
+    /// Hard erasure decoding algorithm.
+    ///
+    /// Used to preprocess punctured codes before attempting bit-flipping decoding,
+    /// as the bit-flipping algorithm cannot handle erasures.
+    ///
+    /// The basic idea is:
+    ///
+    /// * For each erased bit `a`:
+    ///     * For each check `i` that `a` is associated with:
+    ///         * If `a` is the only erasure that `i` is associated with,
+    ///           then compute the parity of `i`, and cast a vote for the
+    ///           value of `a` that would give even parity
+    ///         * Otherwise ignore `i`
+    ///     * If there is a majority vote, set `a` to the winning value, and mark
+    ///       it not longer erased. Otherwise, leave it erased.
+    ///
+    /// This is based on the paper:
+    /// Novel multi-Gbps bit-flipping decoders for punctured LDPC codes,
+    /// by Archonta, Kanistras, and Paliouras, MOCAST 2016.
+    ///
+    /// * `ci`, `cs`, `vi`, and `vs` must all have been initialised appropriately.
+    /// * `codeword` must be (n+p)/8 long (`self.output_len()`), with the first n/8 bytes already
+    ///              set to the received hard information, and the punctured bits at the end will
+    ///              be updated.
+    /// * `working` must be (n+p) bytes long (`self.decode_bf_working_len()`).
+    ///
+    /// Returns `(success, number of iterations run)`. Note that `success`=false only indicates
+    /// that not every punctured bit was correctly recovered; many may have been successful.
+    fn decode_erasures(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
+                       codeword: &mut [u8], working: &mut [u8]) -> (bool, usize)
+    {
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
+        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+        assert_eq!(codeword.len(), self.output_len());
+        assert_eq!(working.len(), self.decode_bf_working_len());
+
+        let n = self.n();
+        let p = self.punctured_bits();
+
+        // Rename working area
+        let erasures = working;
+
+        // Initialise erasures
+        for e in &mut erasures[..n] { *e = 0; }
+        for e in &mut erasures[n..] { *e = 1; }
+
+        // Initialise punctured part of output
+        for c in &mut codeword[n/8..] { *c = 0; }
+
+        // Track how many bits we've fixed
+        let mut bits_fixed = 0;
+
+        for iter in 0..ERASURE_MAX_ITERS {
+
+            // For each punctured bit
+            for a in n..n+p {
+
+                // Skip bits we have since fixed
+                if erasures[a] == 0 {
+                    continue;
+                }
+
+                // Track votes for 0 (negative) or 1 (positive)
+                let mut votes = 0;
+
+                // For each check this bit is associated with
+                for a_i in vs[a]..vs[a+1] {
+                    let i = vi[a_i as usize] as usize;
+                    let mut parity = 0;
+
+                    // See what the check parity is, and quit without voting if this check has
+                    // any other erasures
+                    let mut only_one_erasure = true;
+                    for i_b in cs[i]..cs[i+1] {
+                        let b = ci[i_b as usize] as usize;
+
+                        // Skip if this is the bit we're currently considering
+                        if a == b {
+                            continue;
+                        }
+
+                        // If we see another erasure, stop
+                        if erasures[b] == 1 {
+                            only_one_erasure = false;
+                            break;
+                        }
+
+                        // Otherwise add up parity for this check
+                        parity += (codeword[b/8] >> (7-(b%8))) & 1;
+                    }
+
+                    // Cast a vote if we didn't see any other erasures
+                    if only_one_erasure {
+                        votes += if parity & 1 == 1 { 1 } else { -1 };
+                    }
+                }
+
+                // If we have a majority vote one way or the other, great!
+                // Set ourselves to the majority vote value and clear our erasure status.
+                if votes != 0 {
+                    erasures[a] = 0;
+                    bits_fixed += 1;
+
+                    if votes > 0 {
+                        codeword[a/8] |=   1<<(7-(a%8));
+                    } else {
+                        codeword[a/8] &= !(1<<(7-(a%8)));
+                    }
+                }
+
+                if bits_fixed == p {
+                    return (true, iter);
+                }
+
+            }
+        }
+
+        // If we got this far we have not succeeded
+        (false, ERASURE_MAX_ITERS)
+    }
+
+    /// Bit flipping decoder.
+    ///
+    /// This algorithm is quick but only operates on hard information and consequently leaves a
+    /// lot of error-correcting capability behind. It is around 1dB worse than the message passing
+    /// decoder. However, it requires much less memory and uses no floating point operations.
+    ///
+    /// Requires:
+    ///
+    /// * `ci` and `cs` must have been initialised from `init_sparse_paritycheck_checks()`
+    /// * For all codes where `punctured_bits` is not zero (all TM codes),
+    ///   `vi` and `vs` must additionally have been initialised, using `init_sparse_paritycheck()`,
+    ///   otherwise you may pass in None for these.
+    /// * `input` must be `n/8` long, where each bit is the received hard information
+    /// * `output` must be `(n+p)/8` (=`self.output_len()`) bytes long and is written with the
+    ///   decoded codeword, so the user data is present in the first `k/8` bytes.
+    /// * `working` must be `n+p` (=`self.decode_bf_working_len()`) bytes long.
+    ///
+    /// Returns `(decoding success, iters)`. For punctured codes, `iters` includes iterations
+    /// of the erasure decoding algorithm which is run first.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
+    /// * `vi.unwrap().len()`, if required, must be exactly `self.sparse_paritycheck_vi_len()`.
+    /// * `vs.unwrap().len()`, if required, must be exactly `self.sparse_paritycheck_vs_len()`.
+    /// * `input.len()` must be exactly `self.n()/8`
+    /// * `output.len()` must be exactly `self.output_len()`.
+    /// * `working.len()` must be exactly `self.decode_bf_working_len()`.
+    pub fn decode_bf(&self, ci: &[u16], cs: &[u16], vi: Option<&[u16]>, vs: Option<&[u16]>,
+                     input: &[u8], output: &mut [u8], working: &mut [u8]) -> (bool, usize)
+    {
+        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        assert_eq!(input.len(), self.n()/8);
+        assert_eq!(output.len(), self.output_len());
+        assert_eq!(working.len(), self.decode_bf_working_len());
+
+        // Copy input to codeword space
+        output[..self.n()/8].copy_from_slice(input);
+
+        // For punctured codes we first have to try and decode the erased punctured bits
+        let erasure_iters = if self.punctured_bits() > 0 {
+            let vi = vi.expect("vi must be provided for punctured codes");
+            let vs = vs.expect("vs must be provided for punctured codes");
+            let (_, iters) = self.decode_erasures(ci, cs, vi, vs, output, working);
+            iters
+        } else { 0 };
+
+        // Rename working area
+        let violations = working;
+
+        for iter in 0..BF_MAX_ITERS {
+            // Clear violation counters
+            for v in &mut violations[..] { *v = 0 }
+
+            // For each parity check, work out the parity
+            for cs_ss in cs.windows(2) {
+                let (cs_start, cs_end) = (cs_ss[0] as usize, cs_ss[1] as usize);
+                let mut parity = 0;
+
+                // For each variable involved in this check, update the parity sum
+                for a in &ci[cs_start..cs_end] {
+                    let a = *a as usize;
+                    parity += (output[a/8] >> (7-(a%8))) & 1;
+                }
+
+                // If the check has odd parity, add one violation to each variable
+                // involved in the check
+                if parity & 1 == 1 {
+                    for a in &ci[cs_start..cs_end] {
+                        let a = *a as usize;
+                        violations[a] += 1;
+                    }
+                }
+            }
+
+            // Find the maximum number of violations
+            let max_violations = violations.iter().max().unwrap();
+
+            if *max_violations == 0 {
+                // If no violations occurred we have successfully decoded, yay
+                return (true, iter + erasure_iters);
+            } else {
+                // Otherwise flip all bits with the maximum number of violations
+                for (a, v) in violations.iter().enumerate() {
+                    if *v == *max_violations {
+                        output[a/8] ^= 1<<(7-(a%8));
+                    }
+                }
+            }
+        }
+
+        // If we make it here we have not succeeded.
+        (false, erasure_iters + BF_MAX_ITERS)
+    }
+
     /// Convert hard information and a channel BER into appropriate LLRs.
     ///
     /// Can be used to feed the message passing algorithm soft-ish information.
@@ -408,5 +629,113 @@ mod tests {
 
         assert!(success);
         assert_eq!(&decoded[..8], &txcode[..8]);
+    }
+
+    #[test]
+    fn test_decode_erasures() {
+        let code = LDPCCode::TM1280;
+
+        // Initialise the parity check matrix
+        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
+        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
+        let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
+        let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
+        code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
+
+        // Make up some TX data
+        let txdata: Vec<u8> = (0..128).collect();
+        let mut txcode = vec![0u8; code.n()/8];
+        code.encode_small(&txdata, &mut txcode);
+
+        // Allocate working area and output area
+        let mut working = vec![0u8; code.decode_bf_working_len()];
+        let mut output = vec![0u8; code.output_len()];
+
+        // Copy TX codeword into output
+        output[..txcode.len()].copy_from_slice(&txcode);
+
+        // Run decoder
+        let (success, _) = code.decode_erasures(&ci, &cs, &vi, &vs, &mut output, &mut working);
+
+        assert!(success);
+
+        // Now run the MP decoder to compare against
+        let mut llrs = vec![0f32; code.n()];
+        let mut output_mp = vec![0u8; code.output_len()];
+        code.hard_to_llrs(&txcode, &mut llrs, -3.0);
+        let mut working = vec![0f32; code.decode_mp_working_len()];
+        let (success, _) = code.decode_mp(&ci, &cs, &vi, &vs, &llrs, &mut output_mp, &mut working);
+
+        assert!(success);
+        assert_eq!(output, output_mp);
+
+    }
+
+    #[test]
+    fn test_decode_bf_tm() {
+        let code = LDPCCode::TM1280;
+
+        // Initialise the parity check matrix
+        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
+        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
+        let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
+        let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
+        code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
+
+        // Make up some TX data
+        let txdata: Vec<u8> = (0..128).collect();
+        let mut txcode = vec![0u8; code.n()/8];
+        code.encode_small(&txdata, &mut txcode);
+
+        // Copy to rx
+        let mut rxcode = txcode.clone();
+
+        // Corrupt some bits
+        rxcode[0] = 0xFF;
+
+        // Allocate working area and output area
+        let mut working = vec![0u8; code.decode_bf_working_len()];
+        let mut output = vec![0u8; code.output_len()];
+
+        // Run decoder
+        let (success, _) = code.decode_bf(&ci, &cs, Some(&vi), Some(&vs),
+                                          &rxcode, &mut output, &mut working);
+
+        assert!(success);
+        assert_eq!(&txcode[..], &output[..txcode.len()]);
+
+    }
+
+    #[test]
+    fn test_decode_bf_tc() {
+        let code = LDPCCode::TC256;
+
+        // Initialise the parity check matrix
+        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
+        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
+        code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
+
+        // Make up some TX data
+        let txdata: Vec<u8> = (0..16).collect();
+        let mut txcode = vec![0u8; code.n()/8];
+        code.encode_small(&txdata, &mut txcode);
+
+        // Copy to rx
+        let mut rxcode = txcode.clone();
+
+        // Corrupt some bits
+        rxcode[0] = 0xFF;
+
+        // Allocate working area and output area
+        let mut working = vec![0u8; code.decode_bf_working_len()];
+        let mut output = vec![0u8; code.output_len()];
+
+        // Run decoder
+        let (success, _) = code.decode_bf(&ci, &cs, None, None,
+                                          &rxcode, &mut output, &mut working);
+
+        assert!(success);
+        assert_eq!(&txcode[..], &output[..txcode.len()]);
+
     }
 }
