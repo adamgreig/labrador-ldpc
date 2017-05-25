@@ -1,4 +1,10 @@
+// Copyright 2017 Adam Greig
+// Licensed under the MIT license, see LICENSE for details.
+
 //! This module provides decoding functions for turning codewords into data.
+//!
+//! Please refer to the `decode_mp` and `decode_bf` methods on
+//! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
 use core::f32;
 

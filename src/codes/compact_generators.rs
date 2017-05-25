@@ -1,3 +1,6 @@
+// Copyright 2017 Adam Greig
+// Licensed under the MIT license, see LICENSE for details.
+
 // Note the X * Y length of each of these arrays:
 // X is the number of blocks vertically (so X * circulant_size is equal k),
 // Y is the number of u32 required for all the bits in a row (so Y*32 is equal n-k).

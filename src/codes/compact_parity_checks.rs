@@ -1,3 +1,6 @@
+// Copyright 2017 Adam Greig
+// Licensed under the MIT license, see LICENSE for details.
+
 /*
  * Constants used to define the parity check matrices for the TC codes.
  *

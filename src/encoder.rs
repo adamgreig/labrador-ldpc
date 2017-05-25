@@ -1,4 +1,10 @@
+// Copyright 2017 Adam Greig
+// Licensed under the MIT license, see LICENSE for details.
+
 //! This module provides encoding functions for turning data into codewords.
+//!
+//! Please refer to the `encode_fast` and `encode_small` methods on
+//! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
 // We have a couple of expressions with +0 for clarity of where the 0 comes from
 #![cfg_attr(feature = "cargo-clippy", allow(identity_op))]

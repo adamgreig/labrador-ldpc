@@ -1,3 +1,6 @@
+// Copyright 2017 Adam Greig
+// Licensed under the MIT license, see LICENSE for details.
+
 //! This module contains the available LDPC codes, and the associated constants and methods to
 //! load their generator and parity check matrices.
 
@@ -23,14 +26,14 @@ mod compact_generators;
 /// parity check matrix or sparse representation thereof is a little involved.
 mod compact_parity_checks;
 
-/// Available LDPC codes.
+/// Available LDPC codes, and methods to encode and decode them.
 ///
 /// * The TC codes are the Telecommand LDPC codes from CCSDS document 231.1-O-1.
 /// * The TM codes are the Telemetry LDPC codes from CCSDS document 131.0-B-2.
 /// * For full details please see: https://public.ccsds.org/default.aspx
 ///
-/// For code parameters see the const `CodeParams` structs later in this module:
-/// `TC128_PARAMS` etc.
+/// For code parameters see the [`CodeParams`](struct.CodeParams.html) structs also in this module:
+/// [`TC128_PARAMS`](constant.TC128_PARAMS.html) etc.
 #[derive(Debug)]
 pub enum LDPCCode {
     /// n=128 k=64 r=1/2
