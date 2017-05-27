@@ -140,15 +140,16 @@ impl LDPCCode {
                         // This loop could be replaced by another index table the same size as ci,
                         // which might save time if this section proves to be slow.
                         for (j_b, b) in ci[cs[j] as usize .. cs[j+1] as usize].iter().enumerate() {
-                            let j_b = cs[j] as usize + j_b;
                             if a == *b as usize {
+                                let j_a = cs[j] as usize + j_b;
+
                                 // Sum up just the incoming messages not from i for v(a->i)
                                 if j != i {
-                                    v[a_i] += u[j_b];
+                                    v[a_i] += u[j_a];
                                 }
 
                                 // Sum up all incoming messages for llr_a
-                                llr_a += u[j_b];
+                                llr_a += u[j_a];
 
                                 // Once we find a, we can stop looking through variables on j.
                                 break;
@@ -201,14 +202,15 @@ impl LDPCCode {
                         // This loop could also be replaced by another index table the same size
                         // as vi, which might be useful here.
                         for (b_j, j) in vi[vs[b] as usize .. vs[b+1] as usize].iter().enumerate() {
-                            let b_j = vs[b] as usize + b_j;
                             if i == *j as usize {
-                                if v[b_j] < 0.0 {
+                                let b_i = vs[b] as usize + b_j;
+
+                                if v[b_i] < 0.0 {
                                     sgnprod = -sgnprod;
                                 }
-                                let abs_v_bj = fabsf(v[b_j]);
-                                if abs_v_bj < minacc {
-                                    minacc = abs_v_bj;
+                                let abs_v_bi = fabsf(v[b_i]);
+                                if abs_v_bi < minacc {
+                                    minacc = abs_v_bi;
                                 }
 
                                 // As soon as we find ourselves, we can stop looking.
@@ -459,22 +461,21 @@ impl LDPCCode {
         (false, erasure_iters + BF_MAX_ITERS)
     }
 
-    /// Convert hard information and a channel BER into appropriate LLRs.
+    /// Convert hard information into LLRs.
     ///
-    /// Can be used to feed the message passing algorithm soft-ish information.
-    ///
-    /// `llr` is the log likelihood ratio to use for 1-bits, and must be negative.
-    /// If you know the probability of a bit being wrong, P(X=1|Y=0)=ε, then
-    /// `llr` is ln(ε/(1-ε)). It doesn't vastly matter if you don't know, try `llr`=-3.
+    /// The min-sum decoding used in `decode_mp` is invariant to linear scaling
+    /// in LLR, so it doesn't matter which value is picked so long as the sign
+    /// is correct. This function just assigns -/+ 3.0 for 1/0 bits.
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
     ///
     /// ## Panics
     /// * `input.len()` must be exactly `self.n()/8`
     /// * `llrs.len()` must be exactly `self.n()`
-    pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32], llr: f32) {
+    pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32]) {
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(llrs.len(), self.n());
+        let llr = -3.0f32;
         for (idx, byte) in input.iter().enumerate() {
             for i in 0..8 {
                 llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { llr } else { -llr };
@@ -549,7 +550,7 @@ mod tests {
                         203, 102, 103, 120, 107,  30, 157, 169];
         let mut llrs = vec![0f32; code.n()];
         let llr = -3.0;
-        code.hard_to_llrs(&hard, &mut llrs, llr);
+        code.hard_to_llrs(&hard, &mut llrs);
         assert_eq!(llrs, vec![
              llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
              llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
@@ -618,7 +619,7 @@ mod tests {
 
         // Convert the hard data to LLRs
         let mut llrs = vec![0f32; code.n()];
-        code.hard_to_llrs(&rxcode, &mut llrs, -3.0);
+        code.hard_to_llrs(&rxcode, &mut llrs);
 
         // Allocate working area and output area
         let mut working = vec![0f32; code.decode_mp_working_len()];
@@ -662,7 +663,7 @@ mod tests {
         // Now run the MP decoder to compare against
         let mut llrs = vec![0f32; code.n()];
         let mut output_mp = vec![0u8; code.output_len()];
-        code.hard_to_llrs(&txcode, &mut llrs, -3.0);
+        code.hard_to_llrs(&txcode, &mut llrs);
         let mut working = vec![0f32; code.decode_mp_working_len()];
         let (success, _) = code.decode_mp(&ci, &cs, &vi, &vs, &llrs, &mut output_mp, &mut working);
 

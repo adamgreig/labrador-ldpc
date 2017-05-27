@@ -31,7 +31,7 @@ fn bench_decode_mp(b: &mut Bencher) {
 
     // Convert the hard data to LLRs
     let mut llrs = vec![0f32; code.n()];
-    code.hard_to_llrs(&rxcode, &mut llrs, -3.0);
+    code.hard_to_llrs(&rxcode, &mut llrs);
 
     // Allocate working area and output area
     let mut working = vec![0f32; code.decode_mp_working_len()];
