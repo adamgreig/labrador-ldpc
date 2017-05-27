@@ -22,9 +22,9 @@ fn fabsf(f: f32) -> f32 {
     }
 }
 
-const MP_MAX_ITERS: usize = 20;
-const BF_MAX_ITERS: usize = 20;
-const ERASURE_MAX_ITERS: usize = 16;
+const MP_MAX_ITERS: usize = 50;
+const BF_MAX_ITERS: usize = 50;
+const ERASURE_MAX_ITERS: usize = 30;
 
 impl LDPCCode {
 
