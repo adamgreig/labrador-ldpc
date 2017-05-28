@@ -34,7 +34,7 @@ mod compact_parity_checks;
 ///
 /// For code parameters see the [`CodeParams`](struct.CodeParams.html) structs also in this module:
 /// [`TC128_PARAMS`](constant.TC128_PARAMS.html) etc.
-#[derive(Debug)]
+#[derive(Copy,Clone,Debug,Eq,PartialEq,Hash)]
 pub enum LDPCCode {
     /// n=128 k=64 r=1/2
     TC128,
