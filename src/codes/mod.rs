@@ -98,13 +98,6 @@ pub struct CodeParams {
     // Almost everything below here can probably vanish once const fn is available,
     // as they can all be represented as simple equations of the parameters above.
 
-    /// Length of the full generator matrix in u32. Equal to k*(n-k)/32.
-    pub generator_len: usize,
-
-    /// Length of the full parity check matrix in u32.
-    /// Equal to (n+punctured_bits)*(n-k+punctured_bits)/32.
-    pub paritycheck_len: usize,
-
     /// Length of the sparse parity check ci array in u16. Equal to paritycheck_sum.
     pub sparse_paritycheck_ci_len: usize,
 
@@ -139,8 +132,6 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     circulant_size: 128/8,
     paritycheck_sum: 512,
 
-    generator_len: 64 * (128 - 64)/32,
-    paritycheck_len: (128 + 0) * (128 - 64 + 0)/32,
     sparse_paritycheck_ci_len: 512,
     sparse_paritycheck_cs_len: 128 - 64 + 0 + 1,
     sparse_paritycheck_vi_len: 512,
@@ -159,8 +150,6 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     circulant_size: 256/8,
     paritycheck_sum: 1024,
 
-    generator_len: 128 * (256 - 128)/32,
-    paritycheck_len: (256 + 0) * (256 - 128 + 0)/32,
     sparse_paritycheck_ci_len: 1024,
     sparse_paritycheck_cs_len: 256 - 128 + 0 + 1,
     sparse_paritycheck_vi_len: 1024,
@@ -179,8 +168,6 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/8,
     paritycheck_sum: 2048,
 
-    generator_len: 256 * (512 - 256)/32,
-    paritycheck_len: (512 + 0) * (512 - 256 + 0)/32,
     sparse_paritycheck_ci_len: 2048,
     sparse_paritycheck_cs_len: 512 - 256 + 0 + 1,
     sparse_paritycheck_vi_len: 2048,
@@ -199,8 +186,6 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     circulant_size: 128/4,
     paritycheck_sum: 4992,
 
-    generator_len: 1024 * (1280 - 1024)/32,
-    paritycheck_len: (1280 + 128) * (1280 - 1024 + 128)/32,
     sparse_paritycheck_ci_len: 4992,
     sparse_paritycheck_cs_len: 1280 - 1024 + 128 + 1,
     sparse_paritycheck_vi_len: 4992,
@@ -219,8 +204,6 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     circulant_size: 256/4,
     paritycheck_sum: 5888,
 
-    generator_len: 1024 * (1536 - 1024)/32,
-    paritycheck_len: (1536 + 256) * (1536 - 1024 + 256)/32,
     sparse_paritycheck_ci_len: 5888,
     sparse_paritycheck_cs_len: 1536 - 1024 + 256 + 1,
     sparse_paritycheck_vi_len: 5888,
@@ -239,8 +222,6 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/4,
     paritycheck_sum: 7680,
 
-    generator_len: 1024 * (2048 - 1024)/32,
-    paritycheck_len: (2048 + 512) * (2048 - 1024 + 512)/32,
     sparse_paritycheck_ci_len: 7680,
     sparse_paritycheck_cs_len: 2048 - 1024 + 512 + 1,
     sparse_paritycheck_vi_len: 7680,
@@ -259,8 +240,6 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/4,
     paritycheck_sum: 19968,
 
-    generator_len: 4096 * (5120 - 4096)/32,
-    paritycheck_len: (5120 + 512) * (5120 - 4096 + 512)/32,
     sparse_paritycheck_ci_len: 19968,
     sparse_paritycheck_cs_len: 5120 - 4096 + 512 + 1,
     sparse_paritycheck_vi_len: 19968,
@@ -279,8 +258,6 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     circulant_size: 1024/4,
     paritycheck_sum: 23552,
 
-    generator_len: 4096 * (6144 - 4096)/32,
-    paritycheck_len: (6144 + 1024) * (6144 - 4096 + 1024)/32,
     sparse_paritycheck_ci_len: 23552,
     sparse_paritycheck_cs_len: 6144 - 4096 + 1024 + 1,
     sparse_paritycheck_vi_len: 23552,
@@ -299,8 +276,6 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     circulant_size: 2048/4,
     paritycheck_sum: 30720,
 
-    generator_len: 4096 * (8192 - 4096)/32,
-    paritycheck_len: (8192 + 2048) * (8192 - 4096 + 2048)/32,
     sparse_paritycheck_ci_len: 30720,
     sparse_paritycheck_cs_len: 8192 - 4096 + 2048 + 1,
     sparse_paritycheck_vi_len: 30720,
@@ -322,8 +297,6 @@ pub const TM20480_PARAMS: CodeParams = CodeParams {
     circulant_size: 2048/4,
     paritycheck_sum: ,
 
-    generator_len: ,
-    paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
@@ -341,8 +314,6 @@ pub const TM24576_PARAMS: CodeParams = CodeParams {
     circulant_size: 4096/4,
     paritycheck_sum: ,
 
-    generator_len: ,
-    paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
@@ -360,8 +331,6 @@ pub const TM32768_PARAMS: CodeParams = CodeParams {
     circulant_size: 8192/4,
     paritycheck_sum: ,
 
-    generator_len: ,
-    paritycheck_len: ,
     sparse_paritycheck_ci_len: ,
     sparse_paritycheck_cs_len: ,
     sparse_paritycheck_vi_len: ,
@@ -439,20 +408,6 @@ impl LDPCCode {
         }
     }
 
-    /// Get the length of [u32] required for the full generator matrix.
-    ///
-    /// Equal to k*(n-k) / 32.
-    pub fn generator_len(&self) -> usize {
-        (self.k() * (self.n() - self.k())) / 32
-    }
-
-    /// Get the length of [u32] required for the full parity matrix.
-    ///
-    /// Equal to (n+p)*(n-k+p) / 32, where p is the number of punctured bits.
-    pub fn paritycheck_len(&self) -> usize {
-        (self.n() + self.punctured_bits()) * (self.n() - self.k() + self.punctured_bits()) / 32
-    }
-
     /// Get the length of [u16] required for the sparse parity check ci array.
     ///
     /// Equal to paritycheck_sum.
@@ -479,216 +434,6 @@ impl LDPCCode {
     /// Equal to n + punctured_bits + 1.
     pub fn sparse_paritycheck_vs_len(&self) -> usize {
         self.n() + self.punctured_bits() + 1
-    }
-
-    /// Initialise a full generator matrix, expanded from the compact circulant form.
-    ///
-    /// The output format is a long array of u32, one bit per columnm, and every n/32 is one row.
-    ///
-    /// `g` must be preallocated to the correct length, either `CodeParams.generator_len`
-    /// (available as a const), or `LDPCCode.generator_len()` (at runtime).
-    ///
-    /// Note that this will only initialise the parity part of G, and not the
-    /// identity matrix, since all supported codes are systematic.
-    ///
-    /// This is not used by any of the encoders but might be useful in future or to debug.
-    ///
-    /// ## Panics
-    /// * `g.len()` must be exactly `self.generator_len()`.
-    pub fn init_generator(&self, g: &mut [u32]) {
-        assert_eq!(g.len(), self.generator_len());
-    }
-
-    /// Initialise a full parity check matrix, expanded from the compact form.
-    ///
-    /// The output format is a long array of u32, one bit per column,
-    /// and every (n-k)/32 is one row.
-    ///
-    /// `h` must be preallocated to the correct length, either `CodeParams.paritycheck_len`
-    /// (available as a const), or `LDPCCode.paritycheck_len()` (at runtime).
-    ///
-    /// This is not used by any of the decoders but might be useful in future or to debug.
-    ///
-    /// ## Panics
-    /// * `h.len()` must be exactly `self.paritycheck_len()`.
-    pub fn init_paritycheck(&self, h: &mut [u32]) {
-        assert_eq!(h.len(), self.paritycheck_len());
-
-        // Initialise H to all-zero so we can OR all subsequent bits into place.
-        for hh in &mut h[..] {
-            *hh = 0;
-        }
-
-        match *self {
-            LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512  =>
-                self.init_paritycheck_tc(h),
-            LDPCCode::TM1280 | LDPCCode::TM1536 | LDPCCode::TM2048 |
-            LDPCCode::TM5120 | LDPCCode::TM6144 | LDPCCode::TM8192 =>
-                self.init_paritycheck_tm(h),
-        }
-    }
-
-    /// Initialise full parity matrix for the TC codes.
-    ///
-    /// Pre-requisite: h.len()==self.paritycheck_len() and h is zero filled.
-    fn init_paritycheck_tc(&self, h: &mut [u32]) {
-        use self::compact_parity_checks::{HI, HP, HS};
-
-        let n = self.n();
-        let m = self.submatrix_size();
-
-        assert!(m.is_power_of_two());
-
-        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
-        // to save it having to do expensive division operations
-        let modm = m - 1;
-
-        let prototype = match *self {
-            LDPCCode::TC128 => compact_parity_checks::TC128_H,
-            LDPCCode::TC256 => compact_parity_checks::TC256_H,
-            LDPCCode::TC512 => compact_parity_checks::TC512_H,
-            // This function is only called with TC codes.
-            _               => unreachable!(),
-        };
-
-        // For each row of the compact form (equivalent to a block in the full form)
-        for (u, row) in prototype.iter().enumerate() {
-            // For each entry representing one sub-matrix
-            for (v, subm) in row.iter().enumerate() {
-
-                if (subm & HP == HP) || (subm & HI == HI) {
-                    // If we're either an identity matrix, rotated identity matrix,
-                    // or sum of both...
-
-                    // Extract size of rotation (may be zero)
-                    let rot = (subm & 0x3F) as usize;
-
-                    // For each row in the MxM sub-matrix
-                    for i in 0..m {
-                        // For each bit in the sub-matrix row
-                        for j in 0..m {
-                            // Compute the u32 containing this bit, and the bit offset
-                            let idx = (((u * m) + i) * (n/32)) + ((v * m)/32) + (j / 32);
-                            let mut shift = 31 - (j % 32);
-
-                            // Compensate for m<32, where more than one block goes into each u32
-                            if m < 32 {
-                                shift -= m * (v % (32/m));
-                            }
-
-                            // See if we are in the position for the rotated bit and set if so
-                            if j == (i + rot) & modm {
-                                h[idx] |= 1 << shift;
-                            }
-
-                            // If HS (both HI and HP) is set, we add on the I matrix (rot=0)
-                            if (subm & HS == HS) && (j == i & modm) {
-                                h[idx] ^= 1 << shift;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /// Initialise full parity matrix for the TM codes.
-    ///
-    /// Pre-requisite: h.len()==self.paritycheck_len() and h is zero filled.
-    fn init_paritycheck_tm(&self, h: &mut [u32]) {
-        use self::compact_parity_checks::{TM_R12_H, TM_R23_H, TM_R45_H};
-
-        let m = self.submatrix_size();
-
-        match *self {
-            // Rate 1/2 codes just use the H_1/2 matrix
-            LDPCCode::TM2048 | LDPCCode::TM8192 => {
-                self.init_paritycheck_tm_sub(h, 0, 5, 5*m, &TM_R12_H);
-            },
-
-            // Rate 2/3 codes need the H_1/2 matrix and then the H_2/3 matrix
-            LDPCCode::TM1536 | LDPCCode::TM6144 => {
-                self.init_paritycheck_tm_sub(h, 2*m, 5, 7*m, &TM_R12_H);
-                self.init_paritycheck_tm_sub(h,   0, 2, 7*m, &TM_R23_H);
-            },
-
-            // Rate 4/5 codes need the H_1/2 and then the H_2/3 and then the H_4/5 matrices
-            LDPCCode::TM1280 | LDPCCode::TM5120 => {
-                self.init_paritycheck_tm_sub(h, 6*m, 5, 11*m, &TM_R12_H);
-                self.init_paritycheck_tm_sub(h, 4*m, 2, 11*m, &TM_R23_H);
-                self.init_paritycheck_tm_sub(h,   0, 4, 11*m, &TM_R45_H);
-            },
-
-            // This function is only called with TM codes.
-            _ => unreachable!(),
-        }
-    }
-
-    /// Initialise a part of the full parity matrix for the TM codes.
-    ///
-    /// We initialise `h` with one of the three prototypes, given by `prototype`,
-    /// starting at column `col0`. The prototype uses `pwidth` columns (although the type has 5),
-    /// and `h` has `hcols` columns total.
-    fn init_paritycheck_tm_sub(&self, h: &mut [u32], col0: usize, pwidth: usize, hcols: usize,
-                               prototype: &[[[u8; 5]; 3]; 3])
-    {
-        use self::compact_parity_checks::{HI, HP};
-        let m = self.submatrix_size();
-
-        // Fetch whichever phi lookup table is appropriate for our M
-        let phi_j_k = match m {
-            128  => &self::compact_parity_checks::PHI_J_K_M128,
-            256  => &self::compact_parity_checks::PHI_J_K_M256,
-            512  => &self::compact_parity_checks::PHI_J_K_M512,
-            1024 => &self::compact_parity_checks::PHI_J_K_M1024,
-            2048 => &self::compact_parity_checks::PHI_J_K_M2048,
-            4096 => &self::compact_parity_checks::PHI_J_K_M4096,
-            8192 => &self::compact_parity_checks::PHI_J_K_M8192,
-            _    => unreachable!(),
-        };
-        let theta_k = &self::compact_parity_checks::THETA_K;
-
-        // For each of the three prototype matrices we'll add together
-        for pmatrix in prototype {
-            // For each row of that prototype matrix
-            for (v, row) in pmatrix.iter().enumerate() {
-                // For each entry representing one submatrix
-                for (w, subm) in row[..pwidth].iter().enumerate() {
-
-                    // If we're adding either an identity matrix or a permutation matrix
-                    if (subm & HP == HP) || (subm & HI == HI) {
-
-                        // For each row in the MxM sub-matrix
-                        for i in 0..m {
-
-                            // subm is either a permutation, j=pi(i), or an identity, j=i
-                            let j = if subm & HP == HP {
-                                // Permutation submatrix:
-                                // Extract k from lower bits
-                                let k = (subm & 0x3F) as usize;
-
-                                // Compute pi(i)
-                                m/4 * ((theta_k[k-1] as usize + ((4*i)/m)) % 4) +
-                                    (phi_j_k[(4*i)/m][k-1] as usize + i) % (m/4)
-                            } else {
-                                i
-                            };
-
-                            // Compute the index of the u32 holding bit j, and the shift into
-                            // that u32 for bit j, and then add 1 to that bit.
-                            let idx =
-                                v * m * hcols/32        // Skip sub-matrix above
-                              + i * hcols/32            // Skip rows above i
-                              + col0/32                 // Skip to column 0
-                              + w * m/32                // Skip w sub-matrices left of us
-                              + j/32;                   // Finally skip to correct column
-                            let shift = 31 - (j % 32);
-                            h[idx] ^= 1 << shift;
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /// Initialises the sparse representation of the parity check matrix.
@@ -983,18 +728,6 @@ mod tests {
                                      TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
     ];
 
-    fn crc32_u32(data: &[u32]) -> u32 {
-        let mut crc = 0xFFFFFFFFu32;
-        for x in data {
-            crc ^= *x;
-            for _ in 0..32 {
-                let mask = if crc & 1 == 0 { 0 } else { 0xFFFFFFFFu32 };
-                crc = (crc >> 1) ^ (0xEDB88320 & mask);
-            }
-        }
-        !crc
-    }
-
     fn crc32_u16(data: &[u16]) -> u32 {
         let mut crc = 0xFFFFFFFFu32;
         for x in data {
@@ -1005,69 +738,6 @@ mod tests {
             }
         }
         !crc
-    }
-
-    #[test]
-    fn test_generator_len() {
-        for (code, param) in CODES.iter().zip(PARAMS.iter()) {
-            assert_eq!(code.generator_len(), param.generator_len);
-        }
-    }
-
-    #[test]
-    fn test_generator_matrix() {
-        let mut crc_results = Vec::new();
-        for code in CODES.iter() {
-            let mut g = vec![0; code.generator_len()];
-            code.init_generator(&mut g);
-            crc_results.push(crc32_u32(&g));
-        }
-
-        // The first six CRC32s are known good CRC32 results from the original C implementation,
-        // the remainder were originally generated by this program so only check consistency.
-        assert_eq!(crc_results, vec![0xDC64D486, 0xD78B5564, 0x6AF9EC6A,
-                                     0x452FE118, 0xBCCBA8D0, 0x1597B6F6,
-                                     0xAB79C637, 0x450A2213, 0xDD3F049B]);
-
-    }
-
-    #[test]
-    fn test_paritycheck_len() {
-        for (code, param) in CODES.iter().zip(PARAMS.iter()) {
-            assert_eq!(code.paritycheck_len(), param.paritycheck_len);
-        }
-    }
-
-    #[test]
-    fn test_parity_matrix() {
-        let mut crc_results = Vec::new();
-        for (code, param) in CODES[..6].iter().zip(PARAMS[..6].iter()) {
-            let mut h = vec![0; code.paritycheck_len()];
-            code.init_paritycheck(&mut h);
-            crc_results.push(crc32_u32(&h));
-            let paritycheck_sum: u32 = h.iter().map(|hh| hh.count_ones()).sum();
-            assert_eq!(paritycheck_sum, param.paritycheck_sum);
-        }
-
-        // These CRC32s are known good CRC32 results from the original C implementation
-        assert_eq!(crc_results, vec![0x4FDF9E5A, 0x588971F8, 0x33BDB5C2,
-                                     0x90224F9A, 0x0A8EFA1C, 0x2CD11363]);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_parity_matrix_slow() {
-        let mut crc_results = Vec::new();
-        for (code, param) in CODES[6..].iter().zip(PARAMS[6..].iter()) {
-            let mut h = vec![0; code.paritycheck_len()];
-            code.init_paritycheck(&mut h);
-            crc_results.push(crc32_u32(&h));
-            let paritycheck_sum: u32 = h.iter().map(|hh| hh.count_ones()).sum();
-            assert_eq!(paritycheck_sum, param.paritycheck_sum);
-        }
-
-        // These CRC32s were originally generated by this program so only check consistency.
-        assert_eq!(crc_results, vec![0xEE879968, 0xAFB7F179, 0x27A31AF4]);
     }
 
     #[test]

@@ -12,57 +12,54 @@
 //! efficient on both serious computers and on small embedded systems. Considerations have
 //! been made to accommodate both use cases.
 //!
-//! No memory allocations are made inside this crate so most methods require you to pass in
-//! an allocated block of memory for them to initialise, and then later require you to pass it
-//! back when it must be read. Check individual method documentation for further details.
+//! No memory allocations are made inside this crate so most methods require you to pass in an
+//! allocated block of memory for them to use. Check individual method documentation for further
+//! details.
 //!
 //! Please note this library is still in version 0 and so the API is likely to change.
-//! In particular the current interface for passing initialised values (`g`, `cs`, etc)
-//! into encoders and decoders is not ergonomic and is likely to change. On the other
-//! hand the codes themselves will not change (although new ones may be added) and so newer
-//! versions of the library will still be able to communicate with older versions indefinitely.
+//! In particular the current interface for passing initialised values (`cs`, etc) into decoders is
+//! not ergonomic and is likely to change. On the other hand the codes themselves will not change
+//! (although new ones may be added) and so newer versions of the library will still be able to
+//! communicate with older versions indefinitely.
 //!
 //! ## Example
 //!
 //! ```
-//! extern crate labrador_ldpc;
 //! use labrador_ldpc::LDPCCode;
 //!
-//! fn main() {
-//!     // Pick the TC128 code, n=128 k=64
-//!     // (that's 8 bytes of user data encoded into 16 bytes)
-//!     let code = LDPCCode::TC128;
+//! // Pick the TC128 code, n=128 k=64
+//! // (that's 8 bytes of user data encoded into 16 bytes)
+//! let code = LDPCCode::TC128;
 //!
-//!     // Generate some data to encode
-//!     let txdata: Vec<u8> = (0..8).collect();
+//! // Generate some data to encode
+//! let txdata: Vec<u8> = (0..8).collect();
 //!
-//!     // Allocate memory for the encoded data
-//!     let mut txcode = vec![0u8; code.n()/8];
+//! // Allocate memory for the encoded data
+//! let mut txcode = vec![0u8; code.n()/8];
 //!
-//!     // Encode
-//!     code.encode(&txdata, &mut txcode);
+//! // Encode, copying `txdata` into the start of `txcode` then computing the parity bits
+//! code.copy_encode(&txdata, &mut txcode);
 //!
-//!     // Copy the transmitted data and corrupt a few bits
-//!     let mut rxcode = txcode.clone();
-//!     rxcode[0] ^= 0x55;
+//! // Copy the transmitted data and corrupt a few bits
+//! let mut rxcode = txcode.clone();
+//! rxcode[0] ^= 0x55;
 //!
-//!     // Allocate and initialise the data needed to run a decoder
-//!     // (we only need ci and cs for this code and decoder, but
-//!     //  normally you'd need vi and vs as well).
-//!     let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-//!     let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-//!     code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
+//! // Allocate and initialise the data needed to run a decoder
+//! // (we only need ci and cs for this code and decoder, but
+//! //  normally you'd need vi and vs as well).
+//! let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
+//! let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
+//! code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
 //!
-//!     // Allocate some memory for the decoder's working area and output
-//!     let mut working = vec![0u8; code.decode_bf_working_len()];
-//!     let mut rxdata = vec![0u8; code.output_len()];
+//! // Allocate some memory for the decoder's working area and output
+//! let mut working = vec![0u8; code.decode_bf_working_len()];
+//! let mut rxdata = vec![0u8; code.output_len()];
 //!
-//!     // Decode
-//!     code.decode_bf(&ci, &cs, None, None, &rxcode, &mut rxdata, &mut working);
+//! // Decode
+//! code.decode_bf(&ci, &cs, None, None, &rxcode, &mut rxdata, &mut working);
 //!
-//!     // Check the errors got corrected
-//!     assert_eq!(&rxdata[..8], &txdata[..8]);
-//! }
+//! // Check the errors got corrected
+//! assert_eq!(&rxdata[..8], &txdata[..8]);
 //! ```
 //!
 //! ## Codes
@@ -106,16 +103,10 @@
 //! encode the final n-k parity bits at the end of the codeword.
 //!
 //! These final n-k columns of the generator are stored in a compact form, where only a small
-//! number of the final rows are stored, and the rest can be generated from those at runtime.
-//! This is compact to avoid wasting space in flash memory, but makes encoding data somewhat slow,
-//! so there is a choice to expand to the full generator matrix instead. See the encoding methods
-//! below for more details.
+//! number of the final rows are stored, and the rest can be inferred from those at runtime. Our
+//! encoder methods just use this compact form directly, so it doesn't ever need to be expanded.
 //!
 //! The relevant constants are in the `codes.compact_generators` module, with names like `TC128_G`.
-//! To expand these into a full generator matrix, you use the `LDPCCode.init_generator` method.
-//!
-//! It would be possible to write an encoder that did not use the generator matrix at all, not even
-//! the constants, and instead used the parity check matrix to encode data. This doesn't exist yet.
 //!
 //! ### Parity Check Matrices
 //!
@@ -144,43 +135,53 @@
 //!
 //! ## Encoders
 //!
-//! There are two encoders available. Both of them take a `&[u8]` of input data and encode it
-//! to a `&mut [u8]`.
+//! There are two encoder methods implemented on `LDPCCode`: `encode` and `copy_encode`.
 //!
-//! * The low-memory encoder, `encode_small`, which is as much as a hundred times slower but
-//!   does not need to have the generator matrix in RAM at all, and so has a low memory overhead.
-//!   The only memory required is that needed for the input and output codewords in a compact
-//!   binary representation (i.e. one u8 per eight bits of data).
+//! `copy_encode` is a convenience wrapper that copies your data to encode into the codeword
+//! memory first, and then performs the encode as usual. In comparison, `encode` requires that
+//! your data is already at the start of the codeword memory, and just fills in the parity bits
+//! at the end. It doesn't take very much time to do the copy, so use whichever is more convenient.
 //!
-//! * The fast encoder, `encode_fast`, is much quicker, but requires the generator matrix `g`
-//!   to have been initialised at runtime by the `LDPCCode.init_generator()` method.
-//!   The precise overhead depends on the code in use, and is available as a constant
-//!   `CodeParams.generator_len` or at runtime as `LDPCCode.generator_len()` (it's the length of a
-//!   u32 array, rather than the number of bytes), in addition to the memory required for the input
-//!   and output data.
+//! The encode methods require you to pass in a slice of allocated codeword memory, `&mut [T]`,
+//! which must be `n` bits long exactly. You can pass this as slices of `u8`, `u32`, or `u64`. In
+//! general the larger types will encode up to three times faster, so it's usually worth using
+//! them. They are interpreted as containing your data in little-endian, so you can directly
+//! cast between the `&[u8]` and larger interpretations.
+//!
+//! The encode methods always return an `&mut [u8]` view on the codeword memory, which you
+//! can use if you need this type for further use (such as transmission out of a radio), or if you
+//! ignore the return value you can continue using your original slice of codeword memory.
+//!
+//! ```
+//! # use labrador_ldpc::LDPCCode;
+//! let code = LDPCCode::TC128;
+//!
+//! // Encode into u32, but then access results as u8
+//! let mut codeword: [u32; 4] = [0x03020100, 0x07060504, 0x00000000, 0x00000000];
+//! let txcode = code.encode(&mut codeword);
+//! assert_eq!(txcode, [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+//!                     0x34, 0x99, 0x98, 0x87, 0x94, 0xE1, 0x62, 0x56]);
+//!
+//! // Encode into u64, but maintain access as a u64 afterwards
+//! let mut codeword: [u64; 2] = [0x0706050403020100, 0x0000000000000000];
+//! code.encode(&mut codeword);
+//! assert_eq!(codeword, [0x0706050403020100, 0x5662E19487989934]);
+//! ```
 //!
 //! The required memory (in bytes) to encode with each code is:
 //!
-//! Code   | Input       | Output          | Generator const | Expanded generator
-//! -------|-------------|-----------------|-----------------|---------------------------
-//!        | (Data, RAM) | (Codeword, RAM) | (text)          | (`encode_fast` only, RAM)
-//!        | =k/8        | =n/8            |                 | =k*(n-k)/8
-//! TC128  |           8 |              16 |              32 |                       512
-//! TC256  |          16 |              32 |              64 |                      2048
-//! TC512  |          32 |              64 |             128 |                      8192
-//! TM1280 |         128 |             160 |            1024 |                     32768
-//! TM1536 |         128 |             192 |            1024 |                     65536
-//! TM2048 |         128 |             256 |            1024 |                    131072
-//! TM5120 |         512 |             640 |            4096 |                    524288
-//! TM6144 |         512 |             768 |            4096 |                   1048576
-//! TM8192 |         512 |            1024 |            4096 |                   2097152
-//!
-//! Both encoders require the same input data and output codeword storage, and the same generator
-//! constants. Only the `encode_fast` encoder requires the additional overhead of the expanded
-//! generator in RAM. These constants (expressed as lengths of Vecs of the appropriate type)
-//! are available both at compile-time in the `CodeParams` consts, and at runtime with methods
-//! on `LDPCCode` such as `generator_len()`. You can therefore allocate the required memory either
-//! statically or dynamically at runtime.
+//! Code   | Input (RAM) | Output (RAM)    | Generator const (text)
+//! -------|-------------|-----------------|-----------------------
+//!        | =k/8        | =n/8            |
+//! TC128  |           8 |              16 |              32
+//! TC256  |          16 |              32 |              64
+//! TC512  |          32 |              64 |             128
+//! TM1280 |         128 |             160 |            1024
+//! TM1536 |         128 |             192 |            1024
+//! TM2048 |         128 |             256 |            1024
+//! TM5120 |         512 |             640 |            4096
+//! TM6144 |         512 |             768 |            4096
+//! TM8192 |         512 |            1024 |            4096
 //!
 //! ## Decoders
 //!

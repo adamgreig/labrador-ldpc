@@ -16,6 +16,8 @@ macro_rules! bench_encode {
             let txdata: Vec<u8> = (0..code.k()/8).map(|i| i as u8).collect();
             let mut txcode: Vec<$ty> = vec![0; code.n()/$tylen];
             b.iter(|| { code.copy_encode(&txdata, &mut txcode); } );
+
+            b.bytes = (code.k() as u64) / 8;
         }
     }
 }

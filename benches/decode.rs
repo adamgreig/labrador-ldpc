@@ -36,6 +36,8 @@ fn bench_decode_mp(b: &mut Bencher) {
 
     // Run decoder
     b.iter(|| code.decode_mp(&ci, &cs, &vi, &vs, &llrs, &mut rxdata, &mut working));
+
+    b.bytes = (code.k() as u64) / 8;
 }
 
 #[bench]
@@ -62,4 +64,6 @@ fn bench_decode_bf(b: &mut Bencher) {
 
     // Run decoder
     b.iter(|| code.decode_bf(&ci, &cs, Some(&vi), Some(&vs), &rxcode, &mut output, &mut working));
+
+    b.bytes = (code.k() as u64) / 8;
 }
