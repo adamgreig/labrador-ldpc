@@ -12,7 +12,7 @@
 /// They are in a compact form: for each systematic generator matrix, we take just the
 /// parity bits (the n-k columns on the right), and then we take just the first row for
 /// each circulant (i.e. instead of `k` rows, we take `k/circulant_size` rows), and then
-/// pack the bits for that row into `u32`s.
+/// pack the bits for that row into `u64`s.
 ///
 /// This is relatively easy to unpack at runtime into a full size generator matrix,
 /// by just loading each row, then making a copy rotated right by one bit for each
@@ -422,7 +422,7 @@ impl LDPCCode {
     }
 
     /// Get the reference to the compact generator matrix for this code
-    pub fn compact_generator(&self) -> &'static [u32] {
+    pub fn compact_generator(&self) -> &'static [u64] {
         match *self {
             LDPCCode::TC128  => &compact_generators::TC128_G,
             LDPCCode::TC256  => &compact_generators::TC256_G,
@@ -497,62 +497,6 @@ impl LDPCCode {
     /// * `g.len()` must be exactly `self.generator_len()`.
     pub fn init_generator(&self, g: &mut [u32]) {
         assert_eq!(g.len(), self.generator_len());
-
-        let gc = self.compact_generator();
-        let b = self.circulant_size();
-        let r = self.n() - self.k();
-
-        // For each block of the output matrix
-        for (blockidx, block) in g.chunks_mut(b * r/32).enumerate() {
-            // Copy the first row from the compact matrix
-            block[..r/32].copy_from_slice(&gc[(blockidx  )*(r/32) .. (blockidx+1)*(r/32)]);
-
-            // For each subsequent row, copy from the row above and then
-            // rotate right by one.
-            for rowidx in 1..b {
-                let (prev_row, row) = block[(rowidx-1)*r/32 .. (rowidx+1)*r/32].split_at_mut(r/32);
-                row.copy_from_slice(prev_row);
-
-                // For each block in the row
-                for rowblockidx in 0..r/b {
-                    if b >= 32 {
-                        // In the simpler case, blocks are at least one word.
-                        // Just take the final bit as the initial carry, then
-                        // move through rotating each word.
-                        let rowblock = &mut row[(rowblockidx  )*(b/32) .. (rowblockidx+1)*(b/32)];
-                        let mut carry = rowblock.last().unwrap() & 1;
-                        for word in rowblock.iter_mut() {
-                            let newcarry = *word & 1;
-                            *word = (carry << 31) | (*word >> 1);
-                            carry = newcarry;
-                        }
-                    } else if b == 16 {
-                        // In the more annoying case, blocks are less than one
-                        // word, so we'll have to rotate inside the words.
-                        // So far this can only happen for 16-bit blocks, so
-                        // we'll special case that.
-                        let byteidx = rowblockidx * 2;
-                        let shift = if byteidx % 4 == 0 { 16 } else { 0 };
-                        let mut block = (row[byteidx/4] >> shift) & 0xFFFF;
-                        block = ((block & 1) << 15) | (block >> 1);
-                        row[byteidx/4] &= !(0xFFFF << shift);
-                        row[byteidx/4] |= block << shift;
-                    } else {
-                        // b is loaded from one of the CodeParams above, none of which
-                        // will be < 16. Hopefully.
-                        unreachable!();
-                    }
-                }
-            }
-        }
-
-        // We'll be using this generator matrix by XORing with data interpreted
-        // as u32, but that data will have been a u8 array, so the bytes will
-        // be the wrong way around on little endian platforms.
-        // Instead of fixing this at encode time, we can fix it once here.
-        for x in g.iter_mut() {
-            *x = x.to_be();
-        }
     }
 
     /// Initialise a full parity check matrix, expanded from the compact form.

@@ -20,7 +20,7 @@ fn bench_decode_mp(b: &mut Bencher) {
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
-    code.encode(&txdata, &mut txcode);
+    code.copy_encode(&txdata, &mut txcode);
 
     // Copy it and corrupt the first bit
     let mut rxcode = txcode.clone();
@@ -50,7 +50,7 @@ fn bench_decode_bf(b: &mut Bencher) {
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
-    code.encode(&txdata, &mut txcode);
+    code.copy_encode(&txdata, &mut txcode);
 
     // Copy to rx
     let mut rxcode = txcode.clone();
