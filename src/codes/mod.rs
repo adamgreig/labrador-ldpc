@@ -285,62 +285,6 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     output_len: (8192 + 2048)/8,
 };
 
-/*
- * Not yet included. See comment in the LDPCCode definition above.
-
-/// Code parameters for the TM20480 code
-pub const TM20480_PARAMS: CodeParams = CodeParams {
-    n: 20480,
-    k: 16384,
-    punctured_bits: 2048,
-    submatrix_size: 2048
-    circulant_size: 2048/4,
-    paritycheck_sum: ,
-
-    sparse_paritycheck_ci_len: ,
-    sparse_paritycheck_cs_len: ,
-    sparse_paritycheck_vi_len: ,
-    sparse_paritycheck_vs_len: ,
-    decode_bf_working_len: ,
-    decode_mp_working_len: ,
-};
-
-/// Code parameters for the TM24576 code
-pub const TM24576_PARAMS: CodeParams = CodeParams {
-    n: 24576,
-    k: 16384,
-    punctured_bits: 4096,
-    submatrix_size: 4096
-    circulant_size: 4096/4,
-    paritycheck_sum: ,
-
-    sparse_paritycheck_ci_len: ,
-    sparse_paritycheck_cs_len: ,
-    sparse_paritycheck_vi_len: ,
-    sparse_paritycheck_vs_len: ,
-    decode_bf_working_len: ,
-    decode_mp_working_len: ,
-};
-
-/// Code parameters for the TM32768 code
-pub const TM32768_PARAMS: CodeParams = CodeParams {
-    n: 32768,
-    k: 16384,
-    punctured_bits: 8192,
-    submatrix_size: 8192
-    circulant_size: 8192/4,
-    paritycheck_sum: ,
-
-    sparse_paritycheck_ci_len: ,
-    sparse_paritycheck_cs_len: ,
-    sparse_paritycheck_vi_len: ,
-    sparse_paritycheck_vs_len: ,
-    decode_bf_working_len: ,
-    decode_mp_working_len: ,
-};
-
-*/
-
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
     pub fn params(&self) -> CodeParams {
@@ -354,9 +298,6 @@ impl LDPCCode {
             LDPCCode::TM5120 => TM5120_PARAMS,
             LDPCCode::TM6144 => TM6144_PARAMS,
             LDPCCode::TM8192 => TM8192_PARAMS,
-            //LDPCCode::TM20480 => TM20480_PARAMS,
-            //LDPCCode::TM24576 => TM24576_PARAMS,
-            //LDPCCode::TM32768 => TM32768_PARAMS,
         }
     }
 
@@ -402,9 +343,6 @@ impl LDPCCode {
             LDPCCode::TM5120 => &compact_generators::TM5120_G,
             LDPCCode::TM6144 => &compact_generators::TM6144_G,
             LDPCCode::TM8192 => &compact_generators::TM8192_G,
-            //LDPCCode::TM20480 => &compact_generators::TM20480_G,
-            //LDPCCode::TM24576 => &compact_generators::TM32576_G,
-            //LDPCCode::TM32768 => &compact_generators::TM32768_G,
         }
     }
 
