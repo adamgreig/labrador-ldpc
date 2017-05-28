@@ -1,213 +1,162 @@
 // Copyright 2017 Adam Greig
 // Licensed under the MIT license, see LICENSE for details.
 
-//! This module provides encoding functions for turning data into codewords.
+//! This module provides the encoding function for turning data into codewords.
 //!
-//! Please refer to the `encode_fast` and `encode_small` methods on
-//! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
+//! Please refer to the `encode` method on [`LDPCCode`](../codes/enum.LDPCCode.html)
+//! for more details.
 
 // We have a couple of expressions with +0 for clarity of where the 0 comes from
-#![cfg_attr(feature = "cargo-clippy", allow(identity_op))]
+#![cfg_attr(feature="cargo-clippy", allow(identity_op))]
 
 use core::slice;
 
 use ::codes::LDPCCode;
 
 impl LDPCCode {
-    /// Encode `data` into `codeword` without requiring the full generator matrix in-memory.
+
+    /// Encode `data` into `codeword`.
     ///
-    /// This is slower than `encode_fast` but doesn't require `g`.
+    /// `data` must be k/8 long, and `codeword` must be n/8 long.
     ///
-    /// `data` must be k/8 long, `codeword` must be pre-allocated to n/8 long.
+    /// A faster routine is used if `codeword` is 32-bit aligned.
     ///
-    /// ## Panics
-    /// * `data.len()` must be exactly `self.k() / 8`.
-    /// * `codeword.len()` must be exactly `self.n() / 8`.
-    pub fn encode_small(&self, data: &[u8], codeword: &mut [u8]) {
+    /// All of `data` will be copied into the start of `codeword`,
+    /// and then the additional parity bits computed.
+    pub fn encode(&self, data: &[u8], codeword: &mut [u8]) {
         assert_eq!(data.len(), self.k()/8);
         assert_eq!(codeword.len(), self.n()/8);
+
+        // Copy data into systematic part of codeword
+        codeword[..data.len()].copy_from_slice(data);
+
+        // Zero the remaining parity part of the codeword
+        let mut parity = &mut codeword[data.len()..];
+        for x in parity.iter_mut() { *x = 0; }
+
+        // Encode in u8 or u32 chunks depending on whether the codeword is u32-aligned
+        if (parity.as_ptr() as *const usize) as usize % 4 == 0 {
+            self.encode_aligned(data, parity);
+        } else {
+            self.encode_unaligned(data, parity);
+        }
+    }
+
+    /// Encode when `parity` is 32-bit aligned.
+    ///
+    /// We cast `parity` to a `&mut [u32]` and perform the parity additions as a single
+    /// 32-bit XOR, which is respectably faster than four 8-bit XORs and shuffling.
+    fn encode_aligned<'a>(&self, data: &[u8], parity: &'a mut [u8]) {
+        assert_eq!(parity.len() % 4, 0);
+        assert_eq!(((parity.as_ptr() as *const usize) as usize) % 4, 0);
 
         let k = self.k();
         let n = self.n();
         let b = self.circulant_size();
         let gc = self.compact_generator();
         let r = n - k;
+        let words_per_row = r/32;
 
-        // Compiler doesn't know b is a power of two, so we'll work out the
-        // mask for % and the shift for / ourselves.
-        let modb = b - 1;
-        let divb = b.trailing_zeros();
+        // We've checked parity has a length that's a multiple of 4 and an address
+        // which is 4-byte aligned, so this really ought to be OK. For luck we also
+        // ensure the new slice has the same lifetime as the old slice.
+        let parity = unsafe {
+            slice::from_raw_parts_mut::<'a>(parity.as_mut_ptr() as *mut u32, parity.len()/4)
+        };
 
-        // Copy data into systematic part of codeword
-        codeword[..data.len()].copy_from_slice(data);
+        // Because we'll be rotating the parity bits to simulate the rotation of the
+        // generator matrix circulants, we operate in strides of the block size at
+        // this outer level. So we'll XOR each row of the generator, then rotate
+        // parity, and do it again at a bit offset of +1, repeat.
+        for offset in 0..b {
 
-        // Zero the parity part of the codeword so we can XOR into it
-        for x in &mut codeword[data.len()..] {
-            *x = 0;
-        }
+            // For each row of the compact generator matrix, aka each row of circulants
+            for block in 0..k/b {
+                // This is the data bit (i.e. row of the full generator matrix)
+                let bit = block*b + offset;
 
-        // For each parity check equation (column of the P part of G)
-        for check in 0..r {
-            let mut parity = 0;
-            // For each input data byte
-            for (dbyte_idx, dbyte) in data.iter().enumerate() {
-                // For each bit in this byte, MSbit first
-                for i in 0..8 {
-                    // If this bit is set
-                    if (dbyte>>(7-i) & 1) == 1 {
-                        // Work out what bit position (row) we're at
-                        let j = dbyte_idx*8 + i;
-
-                        // For each row below the one stored in gc, everything is rotated right,
-                        // so work out the bit position offset to cancel this rotation.
-                        // Might need to wrap around.
-                        let mut check_offset: isize = (j & modb) as isize;
-                        if check_offset > (check & modb) as isize {
-                            check_offset -= b as isize;
-                        }
-                        let offset_check = (check as isize - check_offset) as usize;
-
-                        // Pick the relevant compact generator constant for this data bit (row)
-                        // and check (column). We are skipping (j/b) rows of (r/32) words above,
-                        // and then (i-io)/32 words left, to get to the word we want.
-                        let gcword = gc[(j>>divb)*(r/32) + offset_check/32];
-
-                        // Add to our running parity check if the relevant bit is set
-                        if (gcword >> (31 - (offset_check % 32))) & 1 == 1 {
-                            parity ^= 1;
-                        }
+                // If the bit is set we will XOR the circulant row into our parity bits
+                if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
+                    let g_row = &gc[block*words_per_row .. (block+1)*words_per_row];
+                    for (i, gword) in g_row.iter().enumerate() {
+                        parity[i] ^= *gword;
                     }
                 }
             }
 
-            // If the parity bit ended up set, update the codeword
-            if parity == 1 {
-                codeword[(k/8) + (check/8)] |= parity << (7 - (check%8));
-            }
-        }
-    }
-
-    /// Encode `data` into `codeword` using the full generator matrix `g`.
-    ///
-    /// `g` must have been initialised using `init_generator_matrix()`,
-    /// `data` must be k/8 long, and `codeword` must be n/8 long.
-    ///
-    /// Additionally both `data` and `codeword` must be 32-bit aligned.
-    ///
-    /// The lifetimes are just for internal use.
-    ///
-    /// This function is a lot quicker than `encode_fast_safe` but does use some unsafe
-    /// code which requires that `data` and `codeword` have 32-bit alignment. If you
-    /// cannot meet this requirement, consider using `encode_fast_unaligned` which is
-    /// maybe half the speed but does not require aligned data or perform any unsafe
-    /// operations.
-    ///
-    /// ## Panics
-    /// * `g` must be exactly `self.generator_len()` long
-    /// * `data.len()` must be exactly `self.k() / 8`.
-    /// * `codeword.len()` must be exactly `self.n() / 8`.
-    /// * `data` must have 32-bit alignment
-    /// * `codeword` must have 32-bit alignment
-    pub fn encode_fast<'data, 'codeword>(&self, g: &[u32], data: &'data [u8],
-                                         codeword: &'codeword mut [u8])
-    {
-        assert_eq!(g.len(), self.generator_len());
-        assert_eq!(data.len(), self.k()/8);
-        assert_eq!(data.len() % 4, 0);
-        assert_eq!(((data.as_ptr() as *const usize) as usize) % 4, 0);
-        assert_eq!(codeword.len(), self.n()/8);
-        assert_eq!(codeword.len() % 4, 0);
-        assert_eq!(((codeword.as_ptr() as *const usize) as usize) % 4, 0);
-
-        let k = self.k();
-        let r = self.n() - self.k();
-        let words_per_row = r/32;
-
-        // Treat the data and codeword as a &[u32] instead of an &[u8].
-        // This should always be safe since we won't exceed the bounds of the original array,
-        // and all groups of four u8 are valid u32. We explicitly tie the lifetimes to the
-        // input slices.
-        // This nets us a 2-3x speedup for encoding so seems quite worthwhile.
-        let data_u32 = unsafe {
-            slice::from_raw_parts::<'data>(data.as_ptr() as *mut u32, data.len()/4)
-        };
-        let codeword_u32 = unsafe {
-            slice::from_raw_parts_mut::<'codeword>(codeword.as_mut_ptr() as *mut u32,
-                                                   codeword.len()/4)
-        };
-
-        // Copy data into systematic part of codeword
-        codeword_u32[..data_u32.len()].copy_from_slice(data_u32);
-
-        // Zero the parity part of codeword so we can XOR into it later
-        for x in &mut codeword_u32[data_u32.len()..] {
-            *x = 0;
-        }
-
-        // For each u32 of data
-        for (dword_idx, dword) in data_u32.iter().enumerate() {
-            // Need to swap the data around to big endian to get the bit ordering right.
-            // This is still faster than processing the data byte by byte.
-            let dword = dword.to_be();
-            // For each bit in dword, MSbit first
-            for i in 0..32 {
-                // If the bit is set
-                if (dword>>(31-i) & 1) == 1 {
-                    // For each word of the generator matrix row
-                    let row = (dword_idx*32 + i) * words_per_row;
-                    for (gword_idx, gword) in g[row .. row+words_per_row].iter().enumerate() {
-                        codeword_u32[k/32 + gword_idx] ^= *gword;
+            // Now we need to left shift the parity bit blocks by 1.
+            // For most codes b>=32 and we can operate word-wise, but for the small
+            // TC128 code b=16 and we need to rotate within each u32.
+            if b >= 32 {
+                // For each circulant
+                for block in 0..r/b {
+                    // Cut out the parity bits for this circulant and perform a multi-word ROL
+                    let parityblock = &mut parity[block*b/32 .. (block+1)*b/32];
+                    let mut prevc = parityblock[0] >> 31;
+                    for x in parityblock.iter_mut().rev() {
+                        let c = *x >> 31;
+                        *x = (*x<<1) | prevc;
+                        prevc = c;
                     }
+                }
+            } else {
+                // For each u32, ROL the two inner u16
+                for x in parity.iter_mut() {
+                    let block1 = *x & 0xFFFF0000;
+                    let block2 = *x & 0x0000FFFF;
+                    *x =   (((block1<<1)|(block1>>15)) & 0xFFFF0000)
+                         | (((block2<<1)|(block2>>15)) & 0x0000FFFF);
                 }
             }
         }
-    }
 
-    /// Encode `data` into `codeword` using the full generator matrix `g`.
-    ///
-    /// `g` must have been initialised using `init_generator_matrix()`,
-    /// `data` must be k/8 long, and `codeword` must be n/8 long.
-    ///
-    /// This function is slower than `encode_fast`, but does not impose any
-    /// requirements on the alignment of `data` or `codeword`.
-    ///
-    /// ## Panics
-    /// * `g` must be exactly `self.generator_len()` long
-    /// * `data.len()` must be exactly `self.k() / 8`.
-    /// * `codeword.len()` must be exactly `self.n() / 8`.
-    pub fn encode_fast_unaligned(&self, g: &[u32], data: &[u8], codeword: &mut [u8]) {
-        assert_eq!(g.len(), self.generator_len());
-        assert_eq!(data.len(), self.k()/8);
-        assert_eq!(codeword.len(), self.n()/8);
-
-        let k = self.k();
-        let r = self.n() - self.k();
-        let words_per_row = r/32;
-
-        // Copy data into systematic part of codeword
-        codeword[..data.len()].copy_from_slice(data);
-
-        // Zero the parity part of codeword so we can XOR into it later
-        for x in &mut codeword[k/8..] {
-            *x = 0;
+        // Compensate for interpreting [u8 u8 u8 u8] as [u32]
+        for x in parity.iter_mut() {
+            *x = x.to_be();
         }
 
-        // For each byte of data
-        for (byte_idx, byte) in data.iter().enumerate() {
-            // For each bit in the byte, MSbit first
-            for i in 0..8 {
-                // If the bit is set
-                if ((*byte)>>(7-i) & 1) == 1 {
-                    // For each word of the generator matrix row
-                    let row = (byte_idx*8 + i) * words_per_row;
-                    for (word_idx, word) in g[row .. row + words_per_row].iter().enumerate() {
-                        // Remember that the contents of g have already been made big endian,
-                        // so the 8 MSbits correspond to the left-most 8 bits of the generator.
-                        codeword[k/8 + word_idx*4 + 0] ^= (*word >>  0) as u8;
-                        codeword[k/8 + word_idx*4 + 1] ^= (*word >>  8) as u8;
-                        codeword[k/8 + word_idx*4 + 2] ^= (*word >> 16) as u8;
-                        codeword[k/8 + word_idx*4 + 3] ^= (*word >> 24) as u8;
+    }
+
+    /// Encode for any alignment of `parity`.
+    ///
+    /// This is about half the speed of `encode_aligned`.
+    fn encode_unaligned(&self, data: &[u8], parity: &mut [u8]) {
+        let k = self.k();
+        let n = self.n();
+        let b = self.circulant_size();
+        let gc = self.compact_generator();
+        let r = n - k;
+        let words_per_row = r/32;
+
+        // Because we'll be rotating the parity bits to simulate the rotation of the
+        // generator matrix circulants, we operate in strides of the block size at
+        // this outer level. So we'll XOR each row of the generator, then rotate
+        // parity, and do it again at a bit offset of +1, repeat.
+        for offset in 0..b {
+            // For each row of the compact generator matrix, aka each row of circulants
+            for block in 0..k/b {
+                // This is the data bit (i.e. row of the full generator matrix)
+                let bit = block*b + offset;
+                // If the bit is set we will XOR the circulant row into our parity bits
+                if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
+                    let row = block * words_per_row;
+                    for (gword_idx, gword) in gc[row .. row+words_per_row].iter().enumerate() {
+                        parity[gword_idx*4 + 3] ^= (*gword >>  0) as u8;
+                        parity[gword_idx*4 + 2] ^= (*gword >>  8) as u8;
+                        parity[gword_idx*4 + 1] ^= (*gword >> 16) as u8;
+                        parity[gword_idx*4 + 0] ^= (*gword >> 24) as u8;
                     }
+                }
+            }
+            // Now we left-rotate all the parity bits. Unlike in the aligned case,
+            // since we're rotating through u8 we won't have issues with b=16.
+            for block in 0..r/b {
+                let parityblock = &mut parity[block*b/8 .. (block+1)*b/8];
+                let mut prevc = parityblock[0] >> 7;
+                for x in parityblock.iter_mut().rev() {
+                    let c = *x >> 7;
+                    *x = (*x<<1) | prevc;
+                    prevc = c;
                 }
             }
         }
@@ -221,23 +170,11 @@ mod tests {
     use ::codes::LDPCCode;
 
     #[test]
-    fn test_encode_small() {
+    fn test_encode() {
         let code = LDPCCode::TC128;
         let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
         let mut txcode = vec![0u8; code.n()/8];
-        code.encode_small(&txdata, &mut txcode);
-        assert_eq!(txcode, vec![255, 254, 253, 252, 251, 250, 249, 248,
-                                203, 102, 103, 120, 107,  30, 157, 169]);
-    }
-
-    #[test]
-    fn test_encode_fast() {
-        let code = LDPCCode::TC128;
-        let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
-        let mut txcode = vec![0u8; code.n()/8];
-        let mut g = vec![0u32; code.generator_len()];
-        code.init_generator(&mut g);
-        code.encode_fast(&g, &txdata, &mut txcode);
+        code.encode(&txdata, &mut txcode);
         assert_eq!(txcode, vec![255, 254, 253, 252, 251, 250, 249, 248,
                                 203, 102, 103, 120, 107,  30, 157, 169]);
     }

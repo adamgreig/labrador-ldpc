@@ -646,7 +646,7 @@ mod tests {
         // Make up some TX data
         let txdata: Vec<u8> = (0..128).collect();
         let mut txcode = vec![0u8; code.n()/8];
-        code.encode_small(&txdata, &mut txcode);
+        code.encode(&txdata, &mut txcode);
 
         // Allocate working area and output area
         let mut working = vec![0u8; code.decode_bf_working_len()];
@@ -686,7 +686,7 @@ mod tests {
         // Make up some TX data
         let txdata: Vec<u8> = (0..128).collect();
         let mut txcode = vec![0u8; code.n()/8];
-        code.encode_small(&txdata, &mut txcode);
+        code.encode(&txdata, &mut txcode);
 
         // Copy to rx
         let mut rxcode = txcode.clone();
@@ -719,7 +719,7 @@ mod tests {
         // Make up some TX data
         let txdata: Vec<u8> = (0..16).collect();
         let mut txcode = vec![0u8; code.n()/8];
-        code.encode_small(&txdata, &mut txcode);
+        code.encode(&txdata, &mut txcode);
 
         // Copy to rx
         let mut rxcode = txcode.clone();

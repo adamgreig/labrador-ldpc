@@ -40,7 +40,7 @@
 //!     let mut txcode = vec![0u8; code.n()/8];
 //!
 //!     // Encode
-//!     code.encode_small(&txdata, &mut txcode);
+//!     code.encode(&txdata, &mut txcode);
 //!
 //!     // Copy the transmitted data and corrupt a few bits
 //!     let mut rxcode = txcode.clone();

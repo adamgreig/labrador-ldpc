@@ -12,9 +12,6 @@ use labrador_ldpc::LDPCCode;
 fn bench_decode_mp(b: &mut Bencher) {
     let code = LDPCCode::TM2048;
 
-    let mut g = vec![0u32; code.generator_len()];
-    code.init_generator(&mut g);
-
     let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
     let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
     let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
@@ -23,7 +20,7 @@ fn bench_decode_mp(b: &mut Bencher) {
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
-    code.encode_fast(&g, &txdata, &mut txcode);
+    code.encode(&txdata, &mut txcode);
 
     // Copy it and corrupt the first bit
     let mut rxcode = txcode.clone();
@@ -45,9 +42,6 @@ fn bench_decode_mp(b: &mut Bencher) {
 fn bench_decode_bf(b: &mut Bencher) {
     let code = LDPCCode::TM2048;
 
-    let mut g = vec![0u32; code.generator_len()];
-    code.init_generator(&mut g);
-
     let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
     let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
     let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
@@ -56,7 +50,7 @@ fn bench_decode_bf(b: &mut Bencher) {
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
     let mut txcode = vec![0u8; code.n()/8];
-    code.encode_fast(&g, &txdata, &mut txcode);
+    code.encode(&txdata, &mut txcode);
 
     // Copy to rx
     let mut rxcode = txcode.clone();

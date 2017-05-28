@@ -488,10 +488,10 @@ impl LDPCCode {
     /// `g` must be preallocated to the correct length, either `CodeParams.generator_len`
     /// (available as a const), or `LDPCCode.generator_len()` (at runtime).
     ///
-    /// This allows quicker encoding at the cost of higher memory usage.
     /// Note that this will only initialise the parity part of G, and not the
-    /// identity matrix, since all supported codes are systematic. This matches
-    /// what's expected by the non-compact encoder function.
+    /// identity matrix, since all supported codes are systematic.
+    ///
+    /// This is not used by any of the encoders but might be useful in future or to debug.
     ///
     /// ## Panics
     /// * `g.len()` must be exactly `self.generator_len()`.
