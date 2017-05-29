@@ -6,75 +6,58 @@
  *
  * This representation mostly mirrors that in CCSDS 231.1-O-1.
  * Each constant represents a single MxM sub-matrix, where M=n/8.
- * * HZ: All-zero matrix
- * * HI: Identity matrix
- * * HP: Phi: nth right circular shift of I, with lower 5 bits for n
- * The sum HI+HP is represented by placing the HP entries in the second set of rows.
- * The third set of rows is all zeros just to match shape with the later H matrices.
+ * * HZ:   All-zero matrix
+ * * HI:   Identity matrix
+ * * HI|n: nth right circular shift of I, with lower 6 bits for n
+ * The two sets of matrices are summed together to handle the case HI + HI|n.
  */
 
 pub const HZ: u8 = (0 << 6);
 pub const HI: u8 = (1 << 6);
 pub const HP: u8 = (2 << 6);
-pub const HR: u8 = (3 << 6);
 
 /// Compact parity matrix for the TC128 code
-pub static TC128_H: [[[u8; 11]; 4]; 3] = [
+pub static TC128_H: [[[u8; 11]; 4]; 2] = [
     [
-        [HI   , HP| 2, HP|14, HP| 6, HZ   , HP| 0, HP|13, HI   , 0, 0, 0],
-        [HP| 6, HI   , HP| 0, HP| 1, HI   , HZ   , HP| 0, HP| 7, 0, 0, 0],
-        [HP| 4, HP| 1, HI   , HP|14, HP|11, HI   , HZ   , HP| 3, 0, 0, 0],
-        [HP| 0, HP| 1, HP| 9, HI   , HP|14, HP| 1, HI   , HZ   , 0, 0, 0],
+        [HI   , HI| 2, HI|14, HI| 6, HZ   , HI| 0, HI|13, HI   , 0, 0, 0],
+        [HI| 6, HI   , HI| 0, HI| 1, HI   , HZ   , HI| 0, HI| 7, 0, 0, 0],
+        [HI| 4, HI| 1, HI   , HI|14, HI|11, HI   , HZ   , HI| 3, 0, 0, 0],
+        [HI| 0, HI| 1, HI| 9, HI   , HI|14, HI| 1, HI   , HZ   , 0, 0, 0],
     ], [
-        [HP| 7, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , HP|15, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , HP|15, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , HP|13, 0    , 0    , 0    , 0    , 0, 0, 0],
-    ], [
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [HI| 7, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HI|15, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HI|15, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HI|13, 0    , 0    , 0    , 0    , 0, 0, 0],
     ]
 ];
 
 /// Compact parity matrix for the TC256 code
-pub static TC256_H: [[[u8; 11]; 4]; 3] = [
+pub static TC256_H: [[[u8; 11]; 4]; 2] = [
     [
-        [HI   , HP|15, HP|25, HP| 0, HZ   , HP|20, HP|12, HI   , 0, 0, 0],
-        [HP|28, HI   , HP|29, HP|24, HI   , HZ   , HP| 1, HP|20, 0, 0, 0],
-        [HP| 8, HP| 0, HI   , HP| 1, HP|29, HI   , HZ   , HP|21, 0, 0, 0],
-        [HP|18, HP|30, HP| 0, HI   , HP|25, HP|26, HI   , HZ   , 0, 0, 0],
+        [HI   , HI|15, HI|25, HI| 0, HZ   , HI|20, HI|12, HI   , 0, 0, 0],
+        [HI|28, HI   , HI|29, HI|24, HI   , HZ   , HI| 1, HI|20, 0, 0, 0],
+        [HI| 8, HI| 0, HI   , HI| 1, HI|29, HI   , HZ   , HI|21, 0, 0, 0],
+        [HI|18, HI|30, HI| 0, HI   , HI|25, HI|26, HI   , HZ   , 0, 0, 0],
     ], [
-        [HP|31, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , HP|30, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , HP|28, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , HP|30, 0    , 0    , 0    , 0    , 0, 0, 0],
-    ], [
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [HI|31, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HI|30, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HI|28, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HI|30, 0    , 0    , 0    , 0    , 0, 0, 0],
     ]
 ];
 
 /// Compact parity matrix for the TC512 code
-pub static TC512_H: [[[u8; 11]; 4]; 3] = [
+pub static TC512_H: [[[u8; 11]; 4]; 2] = [
     [
-        [HI   , HP|30, HP|50, HP|25, HZ   , HP|43, HP|62, HI   , 0, 0, 0],
-        [HP|56, HI   , HP|50, HP|23, HI   , HZ   , HP|37, HP|26, 0, 0, 0],
-        [HP|16, HP| 0, HI   , HP|27, HP|56, HI   , HZ   , HP|43, 0, 0, 0],
-        [HP|35, HP|56, HP|62, HI   , HP|58, HP| 3, HI   , HZ   , 0, 0, 0],
+        [HI   , HI|30, HI|50, HI|25, HZ   , HI|43, HI|62, HI   , 0, 0, 0],
+        [HI|56, HI   , HI|50, HI|23, HI   , HZ   , HI|37, HI|26, 0, 0, 0],
+        [HI|16, HI| 0, HI   , HI|27, HI|56, HI   , HZ   , HI|43, 0, 0, 0],
+        [HI|35, HI|56, HI|62, HI   , HI|58, HI| 3, HI   , HZ   , 0, 0, 0],
     ], [
-        [HP|63, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , HP|61, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , HP|55, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , HP|11, 0    , 0    , 0    , 0    , 0, 0, 0],
-    ], [
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
-        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [HI|63, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HI|61, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HI|55, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HI|11, 0    , 0    , 0    , 0    , 0, 0, 0],
     ]
 ];
 

@@ -476,7 +476,7 @@ impl LDPCCode {
             for v in &mut working[..] { *v = 0 }
 
             // Calculate the parity of each parity check
-            for (check, var) in self.iter_paritychecks_tc() {
+            for (check, var) in self.iter_paritychecks() {
                 if output[var/8] >> (7-(var%8)) & 1 == 1 {
                     working[check] ^= 0x80;
                 }
@@ -484,7 +484,7 @@ impl LDPCCode {
 
             // Count how many parity violations each variable is associated with
             let mut max_violations = 0;
-            for (check, var) in self.iter_paritychecks_tc() {
+            for (check, var) in self.iter_paritychecks() {
                 if working[check] & 0x80 == 0x80 {
                     working[var] += 1;
                     if working[var] & 0x7F > max_violations {
@@ -530,7 +530,7 @@ impl LDPCCode {
             va[..llrs.len()].copy_from_slice(llrs);
             for x in &mut va[llrs.len()..] { *x = 0 }
 
-            for (idx, (check, var)) in self.iter_paritychecks_tm().enumerate() {
+            for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
                 if v[idx].abs() == ui_min1[check] {
                     u[idx] = ui_min2[check];
                 } else {
@@ -558,7 +558,7 @@ impl LDPCCode {
             for x in &mut ui_min2[..] { *x = i8::MAX }
             for x in &mut ui_sgns[..] { *x = 0  }
             for x in &mut parities[..] { *x = 0 }
-            for (idx, (check, var)) in self.iter_paritychecks_tm().enumerate() {
+            for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
                 // output messages to each parity check
                 let new_v_ai = va[var] - u[idx];
                 if v[idx] != 0 && (new_v_ai >= 0) != (v[idx] >= 0) {

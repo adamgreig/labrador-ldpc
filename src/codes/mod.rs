@@ -226,85 +226,15 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     output_len: (8192 + 2048)/8,
 };
 
-pub struct TCParityIter {
-    proto: &'static [[u8; 8]; 4],
-    m: usize,
-    rowidx: usize,
-    colidx: usize,
-    check: usize,
-    subcheck: u8,
-    subm: u8,
-}
-
-impl Iterator for TCParityIter {
-    type Item = (usize, usize);
-
-    #[inline]
-    fn next(&mut self) -> Option<(usize, usize)> {
-        use self::compact_parity_checks::{HI, HP};
-        // Loop over rowidx in 0 to 3
-        loop {
-            // Loop over colidx in 0 to 7
-            loop {
-                // If we're checking for HI (subcheck==0)
-                if self.subcheck == 0 {
-                    // If we have HI and also haven't yet yielded m edges for it
-                    if self.subm & HI == HI && self.check < self.m {
-                        let chk = self.rowidx*self.m + self.check;
-                        let var = self.colidx*self.m + self.check;
-                        self.check += 1;
-                        return Some((chk, var));
-                    } else {
-                        // Once we've hit m edges, or if there's no HI,
-                        // reset check and advance subcheck
-                        self.check = 0;
-                        self.subcheck = 1;
-                    }
-                }
-
-                // If we're looking for HP (subcheck==1) and we have one
-                if self.subcheck == 1 && self.subm & HP == HP {
-                    // While we haven't yet yielded m edges
-                    if self.check < self.m {
-                        let rot = (self.subm & 0x3F) as usize;
-                        let chk = self.rowidx*self.m + self.check;
-                        let var = self.colidx*self.m + ((self.check + rot) & (self.m - 1));
-                        self.check += 1;
-                        return Some((chk, var));
-                    }
-                }
-
-                // After both HI and HP, reset check and subcheck
-                self.check = 0;
-                self.subcheck = 0;
-
-                // Advance colidx until we hit the end of the column
-                if self.colidx < 7 {
-                    self.colidx += 1;
-                    self.subm = self.proto[self.rowidx][self.colidx];
-                } else {
-                    self.colidx = 0;
-                    break;
-                }
-            }
-
-            // Advance rowidx until we hit the end of the prototype matrix
-            if self.rowidx < 3 {
-                self.rowidx += 1;
-                self.subm = self.proto[self.rowidx][0];
-            } else {
-                return None;
-            }
-        }
-    }
-}
-
-pub struct TMParityIter {
+pub struct ParityIter {
     phi: &'static [[u16; 26]; 4],
-    prototype: &'static [[[u8; 11]; 3]; 3],
+    prototype: &'static [[[u8; 11]; 4]],
+    prototype_rows_sub1: usize,
     prototype_cols_sub1: usize,
+    prototype_subs_sub1: usize,
     m: usize,
     divm: usize,
+    modm: usize,
     modmd4: usize,
     rowidx: usize,
     colidx: usize,
@@ -313,7 +243,7 @@ pub struct TMParityIter {
     check: usize,
 }
 
-impl Iterator for TMParityIter {
+impl Iterator for ParityIter {
     type Item = (usize, usize);
 
     #[inline]
@@ -325,15 +255,20 @@ impl Iterator for TMParityIter {
             loop {
                 // Loop over the three sub-prototypes we have to sum for each cell of the prototype
                 loop {
-                    // Identity matrices are easy
+                    // Identity matrix with a right-shift
                     if self.sub_mat & HI == HI && self.check < self.m {
+                        let rot = (self.sub_mat & 0x3F) as usize;
                         let chk = self.rowidx * self.m + self.check;
-                        let var = self.colidx * self.m + self.check;
+                        let var = if rot == 0 {
+                            self.colidx * self.m + self.check
+                        } else {
+                            self.colidx * self.m + ((self.check + rot) & self.modm)
+                        };
                         self.check += 1;
                         return Some((chk, var));
                     }
 
-                    // Permutation matrices are a little fiddlier
+                    // Permutation matrix using theta and phi lookup tables
                     if self.sub_mat & HP == HP && self.check < self.m {
                         let k = (self.sub_mat & 0x3F) as usize;
                         let chk = self.rowidx * self.m + self.check;
@@ -350,7 +285,7 @@ impl Iterator for TMParityIter {
 
                     // Advance which of the three sub-matrices we're summing.
                     // If sub_mat is 0, there won't be any new ones to sum, so stop there too.
-                    if self.sub_mat != 0 && self.sub_mat_idx < 2 {
+                    if self.sub_mat != 0 && self.sub_mat_idx < self.prototype_subs_sub1 {
                         self.sub_mat_idx += 1;
                         self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
                     } else {
@@ -369,8 +304,8 @@ impl Iterator for TMParityIter {
                 }
             }
 
-            // Advance rowidx. There are always three rows.
-            if self.rowidx < 2 {
+            // Advance rowidx. The number of rows depends on the prototype.
+            if self.rowidx < self.prototype_rows_sub1 {
                 self.rowidx += 1;
                 self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
             } else {
@@ -441,7 +376,15 @@ impl LDPCCode {
         }
     }
 
-    pub fn iter_paritychecks_tc(&self) -> TCParityIter {
+    pub fn iter_paritychecks(&self) -> ParityIter {
+        match *self {
+            LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512 => self.iter_paritychecks_tc(),
+            LDPCCode::TM1280 | LDPCCode::TM1536 | LDPCCode::TM2048 |
+            LDPCCode::TM5120 | LDPCCode::TM6144 | LDPCCode::TM8192 => self.iter_paritychecks_tm(),
+        }
+    }
+
+    fn iter_paritychecks_tc(&self) -> ParityIter {
         let prototype = match *self {
             LDPCCode::TC128 => &compact_parity_checks::TC128_H,
             LDPCCode::TC256 => &compact_parity_checks::TC256_H,
@@ -450,13 +393,17 @@ impl LDPCCode {
             _               => unreachable!(),
         };
 
-        TCParityIter {
-            proto: prototype, m: self.submatrix_size(),
-            rowidx: 0, colidx: 0, check: 0, subcheck: 0, subm: prototype[0][0],
+        let m = self.submatrix_size();
+
+        ParityIter {
+            phi: &self::compact_parity_checks::PHI_J_K_M128, prototype,
+            prototype_cols_sub1: 8-1, prototype_rows_sub1: 4-1, prototype_subs_sub1: 2-1,
+            m, divm: m.trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: prototype[0][0][0], check: 0,
         }
     }
 
-    pub fn iter_paritychecks_tm(&self) -> TMParityIter {
+    fn iter_paritychecks_tm(&self) -> ParityIter {
         let m = self.submatrix_size();
         let phi = match m {
             128  => &self::compact_parity_checks::PHI_J_K_M128,
@@ -477,10 +424,11 @@ impl LDPCCode {
             _  => unreachable!(),
         };
 
-        TMParityIter {
-            phi, prototype, prototype_cols_sub1: prototype_cols - 1, sub_mat: prototype[0][0][0],
-            m, divm: m.trailing_zeros() as usize, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0,
+        ParityIter {
+            phi, prototype, prototype_cols_sub1: prototype_cols - 1,
+            prototype_rows_sub1: 3-1, prototype_subs_sub1: 3-1,
+            m, divm: m.trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: prototype[0][0][0],
         }
     }
 }
@@ -514,32 +462,16 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_parity_tc() {
+    fn test_iter_parity() {
         // These CRC results have been manually verified and should only change if
         // the ordering of checks returned from the iterator changes.
-        let crc_results = [0x13A9D28D, 0xC3CC7625, 0x66EA9A48];
-        for (idx, code) in CODES[..3].iter().enumerate() {
+        let crc_results = [0x13A9D28D, 0xC3CC7625, 0x66EA9A48,
+                           0xB643C99E, 0x8169E0CF, 0x599A0807,
+                           0xD0E794B1, 0xBD0AB764, 0x9003014C];
+        for (idx, code) in CODES.iter().enumerate() {
             let mut count = 0;
             let mut crc = 0xFFFFFFFFu32;
-            for (check, var) in code.iter_paritychecks_tc() {
-                count += 1;
-                crc = crc32_u16(crc, check as u32);
-                crc = crc32_u16(crc, var as u32);
-            }
-            assert_eq!(count, code.paritycheck_sum() as usize);
-            assert_eq!(crc, crc_results[idx]);
-        }
-    }
-
-    #[test]
-    fn test_iter_parity_tm() {
-        // These CRC results have been manually verified and should only change if
-        // the ordering of checks returned from the iterator changes.
-        let crc_results = [0xB643C99E, 0x8169E0CF, 0x599A0807, 0xD0E794B1, 0xBD0AB764, 0x9003014C];
-        for (idx, code) in CODES[3..].iter().enumerate() {
-            let mut count = 0;
-            let mut crc = 0xFFFFFFFFu32;
-            for (check, var) in code.iter_paritychecks_tm() {
+            for (check, var) in code.iter_paritychecks() {
                 count += 1;
                 crc = crc32_u16(crc, check as u32);
                 crc = crc32_u16(crc, var as u32);
