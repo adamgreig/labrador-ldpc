@@ -62,17 +62,6 @@ pub enum LDPCCode {
 
     /// n=8192 k=4096 r=1/2
     TM8192,
-
-    // Not yet included due to complexity of computing the compact generator matrix.
-    // To be included in the future.
-    // /// n=20480 k=16384 r=4/5
-    //TM20480,
-
-    // /// n=24576 k=16384 r=2/3
-    //TM24576,
-
-    // /// n=32768 k=16384 r=1/2
-    //TM32768,
 }
 
 /// Parameters for a given LDPC code.
@@ -98,18 +87,6 @@ pub struct CodeParams {
     // Almost everything below here can probably vanish once const fn is available,
     // as they can all be represented as simple equations of the parameters above.
 
-    /// Length of the sparse parity check ci array in u16. Equal to paritycheck_sum.
-    pub sparse_paritycheck_ci_len: usize,
-
-    /// Length of the sparse parity check cs array in u16. Equal to n-k+punctured_bits+1.
-    pub sparse_paritycheck_cs_len: usize,
-
-    /// Length of the sparse parity check vi array in u16. Equal to paritycheck_sum.
-    pub sparse_paritycheck_vi_len: usize,
-
-    /// Length of the sparse parity check vs array in u16. Equal to n+punctured_bits+1.
-    pub sparse_paritycheck_vs_len: usize,
-
     /// Length of the working area required for the bit-flipping decoder.
     /// Equal to n+punctured_bits.
     pub decode_bf_working_len: usize,
@@ -132,10 +109,6 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     circulant_size: 128/8,
     paritycheck_sum: 512,
 
-    sparse_paritycheck_ci_len: 512,
-    sparse_paritycheck_cs_len: 128 - 64 + 0 + 1,
-    sparse_paritycheck_vi_len: 512,
-    sparse_paritycheck_vs_len: 128 + 0 + 1,
     decode_bf_working_len: 128 + 0,
     decode_mp_working_len: 2 * 512,
     output_len: 128/8,
@@ -150,10 +123,6 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     circulant_size: 256/8,
     paritycheck_sum: 1024,
 
-    sparse_paritycheck_ci_len: 1024,
-    sparse_paritycheck_cs_len: 256 - 128 + 0 + 1,
-    sparse_paritycheck_vi_len: 1024,
-    sparse_paritycheck_vs_len: 256 + 0 + 1,
     decode_bf_working_len: 256 + 0,
     decode_mp_working_len: 2 * 1024,
     output_len: 256/8,
@@ -168,10 +137,6 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/8,
     paritycheck_sum: 2048,
 
-    sparse_paritycheck_ci_len: 2048,
-    sparse_paritycheck_cs_len: 512 - 256 + 0 + 1,
-    sparse_paritycheck_vi_len: 2048,
-    sparse_paritycheck_vs_len: 512 + 0 + 1,
     decode_bf_working_len: 512 + 0,
     decode_mp_working_len: 2 * 2048,
     output_len: 512/8,
@@ -186,10 +151,6 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     circulant_size: 128/4,
     paritycheck_sum: 4992,
 
-    sparse_paritycheck_ci_len: 4992,
-    sparse_paritycheck_cs_len: 1280 - 1024 + 128 + 1,
-    sparse_paritycheck_vi_len: 4992,
-    sparse_paritycheck_vs_len: 1280 + 128 + 1,
     decode_bf_working_len: 1280 + 128,
     decode_mp_working_len: 2 * 4992,
     output_len: (1280 + 128)/8,
@@ -204,10 +165,6 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     circulant_size: 256/4,
     paritycheck_sum: 5888,
 
-    sparse_paritycheck_ci_len: 5888,
-    sparse_paritycheck_cs_len: 1536 - 1024 + 256 + 1,
-    sparse_paritycheck_vi_len: 5888,
-    sparse_paritycheck_vs_len: 1536 + 256 + 1,
     decode_bf_working_len: 1536 + 256,
     decode_mp_working_len: 2 * 5888,
     output_len: (1536 + 256)/8,
@@ -222,10 +179,6 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/4,
     paritycheck_sum: 7680,
 
-    sparse_paritycheck_ci_len: 7680,
-    sparse_paritycheck_cs_len: 2048 - 1024 + 512 + 1,
-    sparse_paritycheck_vi_len: 7680,
-    sparse_paritycheck_vs_len: 2048 + 512 + 1,
     decode_bf_working_len: 2048 + 512,
     decode_mp_working_len: 2 * 7680,
     output_len: (2048 + 512)/8,
@@ -240,10 +193,6 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     circulant_size: 512/4,
     paritycheck_sum: 19968,
 
-    sparse_paritycheck_ci_len: 19968,
-    sparse_paritycheck_cs_len: 5120 - 4096 + 512 + 1,
-    sparse_paritycheck_vi_len: 19968,
-    sparse_paritycheck_vs_len: 5120 + 512 + 1,
     decode_bf_working_len: 5120 + 512,
     decode_mp_working_len: 2 * 19968,
     output_len: (5120 + 512)/8,
@@ -258,10 +207,6 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     circulant_size: 1024/4,
     paritycheck_sum: 23552,
 
-    sparse_paritycheck_ci_len: 23552,
-    sparse_paritycheck_cs_len: 6144 - 4096 + 1024 + 1,
-    sparse_paritycheck_vi_len: 23552,
-    sparse_paritycheck_vs_len: 6144 + 1024 + 1,
     decode_bf_working_len: 6144 + 1024,
     decode_mp_working_len: 2 * 23552,
     output_len: (6144 + 1024)/8,
@@ -276,14 +221,164 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     circulant_size: 2048/4,
     paritycheck_sum: 30720,
 
-    sparse_paritycheck_ci_len: 30720,
-    sparse_paritycheck_cs_len: 8192 - 4096 + 2048 + 1,
-    sparse_paritycheck_vi_len: 30720,
-    sparse_paritycheck_vs_len: 8192 + 2048 + 1,
     decode_bf_working_len: 8192 + 2048,
     decode_mp_working_len: 2 * 30720,
     output_len: (8192 + 2048)/8,
 };
+
+pub struct TCParityIter {
+    proto: &'static [[u8; 8]; 4],
+    m: usize,
+    rowidx: usize,
+    colidx: usize,
+    check: usize,
+    subcheck: u8,
+    subm: u8,
+}
+
+impl Iterator for TCParityIter {
+    type Item = (usize, usize);
+
+    #[inline]
+    fn next(&mut self) -> Option<(usize, usize)> {
+        use self::compact_parity_checks::{HI, HP};
+        // Loop over rowidx in 0 to 3
+        loop {
+            // Loop over colidx in 0 to 7
+            loop {
+                // If we're checking for HI (subcheck==0)
+                if self.subcheck == 0 {
+                    // If we have HI and also haven't yet yielded m edges for it
+                    if self.subm & HI == HI && self.check < self.m {
+                        let chk = self.rowidx*self.m + self.check;
+                        let var = self.colidx*self.m + self.check;
+                        self.check += 1;
+                        return Some((chk, var));
+                    } else {
+                        // Once we've hit m edges, or if there's no HI,
+                        // reset check and advance subcheck
+                        self.check = 0;
+                        self.subcheck = 1;
+                    }
+                }
+
+                // If we're looking for HP (subcheck==1) and we have one
+                if self.subcheck == 1 && self.subm & HP == HP {
+                    // While we haven't yet yielded m edges
+                    if self.check < self.m {
+                        let rot = (self.subm & 0x3F) as usize;
+                        let chk = self.rowidx*self.m + self.check;
+                        let var = self.colidx*self.m + ((self.check + rot) & (self.m - 1));
+                        self.check += 1;
+                        return Some((chk, var));
+                    }
+                }
+
+                // After both HI and HP, reset check and subcheck
+                self.check = 0;
+                self.subcheck = 0;
+
+                // Advance colidx until we hit the end of the column
+                if self.colidx < 7 {
+                    self.colidx += 1;
+                    self.subm = self.proto[self.rowidx][self.colidx];
+                } else {
+                    self.colidx = 0;
+                    break;
+                }
+            }
+
+            // Advance rowidx until we hit the end of the prototype matrix
+            if self.rowidx < 3 {
+                self.rowidx += 1;
+                self.subm = self.proto[self.rowidx][0];
+            } else {
+                return None;
+            }
+        }
+    }
+}
+
+pub struct TMParityIter {
+    phi: &'static [[u16; 26]; 4],
+    prototype: &'static [[[u8; 11]; 3]; 3],
+    prototype_cols_sub1: usize,
+    m: usize,
+    divm: usize,
+    modmd4: usize,
+    rowidx: usize,
+    colidx: usize,
+    sub_mat_idx: usize,
+    sub_mat: u8,
+    check: usize,
+}
+
+impl Iterator for TMParityIter {
+    type Item = (usize, usize);
+
+    #[inline]
+    fn next(&mut self) -> Option<(usize, usize)> {
+        use self::compact_parity_checks::{HI, HP, THETA_K};
+        // Loop over rows of the prototype
+        loop {
+            // Loop over columns of the prototype
+            loop {
+                // Loop over the three sub-prototypes we have to sum for each cell of the prototype
+                loop {
+                    // Identity matrices are easy
+                    if self.sub_mat & HI == HI && self.check < self.m {
+                        let chk = self.rowidx * self.m + self.check;
+                        let var = self.colidx * self.m + self.check;
+                        self.check += 1;
+                        return Some((chk, var));
+                    }
+
+                    // Permutation matrices are a little fiddlier
+                    if self.sub_mat & HP == HP && self.check < self.m {
+                        let k = (self.sub_mat & 0x3F) as usize;
+                        let chk = self.rowidx * self.m + self.check;
+                        let pi = self.m/4
+                                  * ((THETA_K[k-1] as usize + ((4*self.check)>>self.divm)) % 4)
+                                 + ((self.phi[(4*self.check)>>self.divm][k-1] as usize
+                                     + self.check) & self.modmd4);
+                        let var = self.colidx * self.m + pi;
+                        self.check += 1;
+                        return Some((chk, var));
+                    }
+
+                    self.check = 0;
+
+                    // Advance which of the three sub-matrices we're summing.
+                    // If sub_mat is 0, there won't be any new ones to sum, so stop there too.
+                    if self.sub_mat != 0 && self.sub_mat_idx < 2 {
+                        self.sub_mat_idx += 1;
+                        self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+                    } else {
+                        self.sub_mat_idx = 0;
+                        break;
+                    }
+                }
+
+                // Advance colidx. The number of active columns depends on the prototype.
+                if self.colidx < self.prototype_cols_sub1 {
+                    self.colidx += 1;
+                    self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+                } else {
+                    self.colidx = 0;
+                    break;
+                }
+            }
+
+            // Advance rowidx. There are always three rows.
+            if self.rowidx < 2 {
+                self.rowidx += 1;
+                self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+            } else {
+                return None;
+            }
+        }
+    }
+}
 
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
@@ -346,227 +441,24 @@ impl LDPCCode {
         }
     }
 
-    /// Get the length of [u16] required for the sparse parity check ci array.
-    ///
-    /// Equal to paritycheck_sum.
-    pub fn sparse_paritycheck_ci_len(&self) -> usize {
-        self.paritycheck_sum() as usize
-    }
-
-    /// Get the length of [u16] required for the sparse parity check cs array.
-    ///
-    /// Equal to n - k + punctured_bits + 1.
-    pub fn sparse_paritycheck_cs_len(&self) -> usize {
-        self.n() - self.k() + self.punctured_bits() + 1
-    }
-
-    /// Get the length of [u16] required for the sparse parity check vi array.
-    ///
-    /// Equal to paritycheck_sum.
-    pub fn sparse_paritycheck_vi_len(&self) -> usize {
-        self.paritycheck_sum() as usize
-    }
-
-    /// Get the length of [u16] required for the sparse parity check vs array.
-    ///
-    /// Equal to n + punctured_bits + 1.
-    pub fn sparse_paritycheck_vs_len(&self) -> usize {
-        self.n() + self.punctured_bits() + 1
-    }
-
-    /// Initialises the sparse representation of the parity check matrix.
-    ///
-    /// The sparse representation consists of four arrays:
-    ///
-    /// * `ci` and `vi` contain the indices of the non-zero entries along each row (check nodes)
-    ///   and column (variable nodes) of the full parity check matrix, allowing iteration through
-    ///   the parity matrix connections from check to variable node or from variable to check node.
-    /// * `cs` and `vs` contain the offset into `ci` and `vi` for a given check or column index.
-    ///   This means the list of indices of all variable nodes involved in check i starts at
-    ///   `ci[cs[i]]` and it ends at `ci[cs[i+1]]`. `cs` has (n-k+p+1) entries, while `vs` has
-    ///   (n+p+1) entries, in both cases with the final entry set to the length of `ci` and `vi`
-    ///   respectively.
-    ///
-    /// The references to `ci`, `cs`, `vi`, and `vs` must all be preallocated to the correct size,
-    /// available as a `const` in `CodeParams.sparse_paritycheck_ci_len` etc, and at runtime
-    /// from `LDPCCode.sparse_paritycheck_ci_len()` etc.
-    ///
-    /// ## Panics
-    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
-    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
-    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
-    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
-    pub fn init_sparse_paritycheck(&self, ci: &mut [u16], cs: &mut [u16],
-                                   vi: &mut [u16], vs: &mut [u16])
-    {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
-        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
-
-        self.init_sparse_paritycheck_checks(ci, cs);
-        self.init_sparse_paritycheck_variables(ci, cs, vi, vs);
-    }
-
-    /// Initialises just the checks (`ci` and `cs`) in the sparse representation of the parity
-    /// check matrix, useful for the bit flipping decoder which does not need `vi` or `vs`.
-    ///
-    /// See `init_sparse_paritycheck` for further details.
-    ///
-    /// ## Panics
-    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
-    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
-    pub fn init_sparse_paritycheck_checks(&self, ci: &mut [u16], cs: &mut[u16]) {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-
-        match *self {
-            LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512  =>
-                self.init_sparse_paritycheck_checks_tc(ci, cs),
-            LDPCCode::TM1280 | LDPCCode::TM1536 | LDPCCode::TM2048 |
-            LDPCCode::TM5120 | LDPCCode::TM6144 | LDPCCode::TM8192 =>
-                self.init_sparse_paritycheck_checks_tm(ci, cs),
-        }
-    }
-
-    /// Initialises just the variables (`vi` and `vs`) in the sparse representation of the parity
-    /// check matrix. Requires that the checks `ci` and `cs` have already been initialised.
-    ///
-    /// See `init_sparse_paritycheck` for further details.
-    ///
-    /// ## Panics
-    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
-    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
-    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
-    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
-    pub fn init_sparse_paritycheck_variables(&self, ci: &[u16], cs: &[u16],
-                                             vi: &mut[u16], vs: &mut[u16])
-    {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
-        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
-
-        let n = self.n();
-        let p = self.punctured_bits();
-
-        let mut vi_idx = 0usize;
-
-        // For each variable of the full parity check matrix (0..n+p)
-        for (variable, vs_variable) in vs.iter_mut().take(n+p).enumerate() {
-            // Record the starting index for this check
-            *vs_variable = vi_idx as u16;
-
-            // For each (start, stop) pair in cs,
-            // aka each check (or row) of the parity check matrix, 0 through n-k+p
-            for (check, cs_ss) in cs.windows(2).enumerate() {
-                // Go through each variable this check is connected to
-                for ci_variable in ci[cs_ss[0] as usize .. cs_ss[1] as usize].iter() {
-                    // If we see ourselves in this row's connections, then
-                    // this check should be listed against our variable
-                    if *ci_variable as usize == variable {
-                        vi[vi_idx] = check as u16;
-                        vi_idx += 1;
-                    }
-                }
-            }
-        }
-
-        vs[n+p] = vi_idx as u16;
-    }
-
-    /// Initialise sparse check nodes (`ci` and `cs`) for TC codes.
-    fn init_sparse_paritycheck_checks_tc(&self, ci: &mut [u16], cs: &mut [u16]) {
-        use self::compact_parity_checks::{HI, HP};
-
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-
-        let n = self.n();
-        let k = self.k();
-        let m = self.submatrix_size();
-
-        assert!(m.is_power_of_two());
-
-        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
-        // to save it having to do expensive division operations
-        let modm = m - 1;
-        let divm = m.trailing_zeros();
-
+    pub fn iter_paritychecks_tc(&self) -> TCParityIter {
         let prototype = match *self {
-            LDPCCode::TC128 => compact_parity_checks::TC128_H,
-            LDPCCode::TC256 => compact_parity_checks::TC256_H,
-            LDPCCode::TC512 => compact_parity_checks::TC512_H,
+            LDPCCode::TC128 => &compact_parity_checks::TC128_H,
+            LDPCCode::TC256 => &compact_parity_checks::TC256_H,
+            LDPCCode::TC512 => &compact_parity_checks::TC512_H,
             // This function is only called with TC codes.
             _               => unreachable!(),
         };
 
-        let mut ci_idx = 0;
-
-        // For each check in the full parity check matrix (each row, 0..(n-k))
-        for (check, cs_check) in cs.iter_mut().take(n-k).enumerate() {
-            // Index of the sub-matrix for this check
-            let check_block = check >> divm;
-            // Check number inside this block
-            let block_check = check & modm;
-
-            // Record the start index of this check
-            *cs_check = ci_idx;
-
-            // For each variable of the full parity check matrix (each column)
-            for variable in 0..n {
-                // Index of the sub-matrix for this variable
-                let variable_block = variable >> divm;
-                // variableumn number inside this block
-                let block_variable = variable & modm;
-
-                // Take the relevant prototype entry and extract its rotation
-                let subm = prototype[check_block][variable_block];
-                let rot = (subm & 0x3F) as usize;
-
-                // For the identity matrix just check if j==i.
-                if subm & HI == HI && block_variable == block_check {
-                    ci[ci_idx as usize] = variable as u16;
-                    ci_idx += 1;
-                }
-
-                // Rotated identity matrix. Check if j==(i+r)%m.
-                if subm & HP == HP && block_variable == (block_check + rot) & modm {
-                    ci[ci_idx as usize] = variable as u16;
-                    ci_idx += 1;
-                }
-            }
-
+        TCParityIter {
+            proto: prototype, m: self.submatrix_size(),
+            rowidx: 0, colidx: 0, check: 0, subcheck: 0, subm: prototype[0][0],
         }
-
-        // Record the final entry.
-        cs[n - k] = ci_idx;
     }
 
-    /// Initialise sparse check nodes (`ci` and `cs`) for TM codes.
-    fn init_sparse_paritycheck_checks_tm(&self, ci: &mut [u16], cs: &mut [u16]) {
-        use self::compact_parity_checks::{HI, HP, TM_R12_H, TM_R23_H, TM_R45_H};
-
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-
-        let mut ci_idx = 0;
-
-        let n = self.n();
-        let k = self.k();
+    pub fn iter_paritychecks_tm(&self) -> TMParityIter {
         let m = self.submatrix_size();
-        let p = self.punctured_bits();
-
-        assert!(m.is_power_of_two());
-
-        // Compiler doesn't know m is a power of two, so we'll work out the mask for %
-        // to save it having to do expensive division operations
-        let modm = m - 1;
-        let divm = m.trailing_zeros();
-        let modmd4 = (m/4) - 1;
-
-        // Fetch whichever phi lookup table is appropriate for our M
-        let phi_j_k = match m {
+        let phi = match m {
             128  => &self::compact_parity_checks::PHI_J_K_M128,
             256  => &self::compact_parity_checks::PHI_J_K_M256,
             512  => &self::compact_parity_checks::PHI_J_K_M512,
@@ -576,74 +468,20 @@ impl LDPCCode {
             8192 => &self::compact_parity_checks::PHI_J_K_M8192,
             _    => unreachable!(),
         };
-        let theta_k = &self::compact_parity_checks::THETA_K;
 
-        // For each check in the full parity check matrix (each row)
-        for (check, cs_check) in cs.iter_mut().take(n-k+p).enumerate() {
-            // Check number inside this block
-            let block_check = check & modm;
+        let prototype_cols = (self.n() + self.punctured_bits()) / m;
+        let prototype = match prototype_cols {
+            5  => &self::compact_parity_checks::TM_R12_H,
+            7  => &self::compact_parity_checks::TM_R23_H,
+            11 => &self::compact_parity_checks::TM_R45_H,
+            _  => unreachable!(),
+        };
 
-            // Record the start index of this check
-            *cs_check = ci_idx;
-
-            // For each block (submatrix) in the prototype matrix row
-            for variable_block in 0..((n+p)/m) {
-
-                // Determine which prototype to sum for this check and variable
-                // (the variable_block_offset is used to shift the prototype to the left)
-                let (prototype, variable_block_offset) = match (n + p) / m {
-                    5  =>                              (&TM_R12_H, 0),
-                    7  => if variable_block < 2 {      (&TM_R23_H, 0) }
-                          else {                       (&TM_R12_H, 2) },
-                    11 => if variable_block < 4 {      (&TM_R45_H, 0) }
-                          else if variable_block < 6 { (&TM_R23_H, 4) }
-                          else {                       (&TM_R12_H, 6) },
-                    _  => unreachable!(),
-                };
-
-                // For each variable node in this prototype block row
-                for block_variable in 0..m {
-
-                    // For each of those prototype entries, work out whether their parity bit is
-                    // set for this check and variable, and sum over the three sub matrices.
-                    let mut pbit = 0;
-                    for proto in prototype {
-                        let subm = proto[check >> divm][variable_block - variable_block_offset];
-                        if subm == 0 {
-                            // After a 0 we won't find anything further, so can stop here
-                            break;
-                        } else if subm & HI == HI {
-                            // Identity matrix is simple, just check block_variable==block_check
-                            if block_variable == block_check {
-                                pbit ^= 1;
-                            }
-                        } else if subm & HP == HP {
-                            // Permutation submatrix:
-                            // Extract k from lower bits
-                            let k = (subm & 0x3F) as usize;
-                            // Compute pi(i)
-                            let pi_i = m/4
-                                       * ((theta_k[k-1] as usize + ((4*block_check)>>divm)) % 4)
-                                       + ((phi_j_k[(4*block_check)>>divm][k-1] as usize
-                                           + block_check)
-                                          & modmd4);
-                            if block_variable == pi_i {
-                                pbit ^= 1;
-                            }
-                        }
-                    }
-
-                    // If the parity bit ends up set, record this variable against this check.
-                    if pbit == 1 {
-                        ci[ci_idx as usize] = ((variable_block * m) + block_variable) as u16;
-                        ci_idx += 1;
-                    }
-                }
-            }
+        TMParityIter {
+            phi, prototype, prototype_cols_sub1: prototype_cols - 1, sub_mat: prototype[0][0][0],
+            m, divm: m.trailing_zeros() as usize, modmd4: (m/4)-1,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0,
         }
-
-        // Record the final entry.
-        cs[n - k + p] = ci_idx;
     }
 }
 
@@ -666,69 +504,48 @@ mod tests {
                                      TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
     ];
 
-    fn crc32_u16(data: &[u16]) -> u32 {
-        let mut crc = 0xFFFFFFFFu32;
-        for x in data {
-            crc ^= *x as u32;
-            for _ in 0..16 {
-                let mask = if crc & 1 == 0 { 0 } else { 0xFFFFFFFFu32 };
-                crc = (crc >> 1) ^ (0xEDB88320 & mask);
+    fn crc32_u16(crc: u32, data: u32) -> u32 {
+        let mut crc = crc ^ data;
+        for _ in 0..16 {
+            let mask = if crc & 1 == 0 { 0 } else { 0xFFFFFFFFu32 };
+            crc = (crc >> 1) ^ (0xEDB88320 & mask);
+        }
+        crc
+    }
+
+    #[test]
+    fn test_iter_parity_tc() {
+        // These CRC results have been manually verified and should only change if
+        // the ordering of checks returned from the iterator changes.
+        let crc_results = [0x13A9D28D, 0xC3CC7625, 0x66EA9A48];
+        for (idx, code) in CODES[..3].iter().enumerate() {
+            let mut count = 0;
+            let mut crc = 0xFFFFFFFFu32;
+            for (check, var) in code.iter_paritychecks_tc() {
+                count += 1;
+                crc = crc32_u16(crc, check as u32);
+                crc = crc32_u16(crc, var as u32);
             }
-        }
-        !crc
-    }
-
-    #[test]
-    fn test_sparse_paritycheck_len() {
-        for (code, param) in CODES.iter().zip(PARAMS.iter()) {
-            assert_eq!(code.sparse_paritycheck_ci_len(), param.sparse_paritycheck_ci_len);
-            assert_eq!(code.sparse_paritycheck_cs_len(), param.sparse_paritycheck_cs_len);
-            assert_eq!(code.sparse_paritycheck_vi_len(), param.sparse_paritycheck_vi_len);
-            assert_eq!(code.sparse_paritycheck_vs_len(), param.sparse_paritycheck_vs_len);
+            assert_eq!(count, code.paritycheck_sum() as usize);
+            assert_eq!(crc, crc_results[idx]);
         }
     }
 
     #[test]
-    fn test_sparse_paritycheck() {
-        let mut crc_results: Vec<(u32, u32, u32, u32)> = Vec::new();
-        for code in CODES[..6].iter() {
-            let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-            let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-            let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
-            let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
-            code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
-            crc_results.push((crc32_u16(&ci), crc32_u16(&cs), crc32_u16(&vi), crc32_u16(&vs)));
+    fn test_iter_parity_tm() {
+        // These CRC results have been manually verified and should only change if
+        // the ordering of checks returned from the iterator changes.
+        let crc_results = [0xB643C99E, 0x8169E0CF, 0x599A0807, 0xD0E794B1, 0xBD0AB764, 0x9003014C];
+        for (idx, code) in CODES[3..].iter().enumerate() {
+            let mut count = 0;
+            let mut crc = 0xFFFFFFFFu32;
+            for (check, var) in code.iter_paritychecks_tm() {
+                count += 1;
+                crc = crc32_u16(crc, check as u32);
+                crc = crc32_u16(crc, var as u32);
+            }
+            assert_eq!(count, code.paritycheck_sum() as usize);
+            assert_eq!(crc, crc_results[idx]);
         }
-
-        // These sets of CRC32s are known good results from the original C implementation
-        assert_eq!(crc_results, vec![
-            (0xB7E800BD, 0x6C4C3709, 0xEACD656A, 0x41998815),
-            (0x90C64BFC, 0x9D4CF128, 0x8B4E54F1, 0x3A21F54D),
-            (0xE7135070, 0xA87336D5, 0x071B76FF, 0x80992086),
-            (0x07699182, 0xF5386F36, 0x3951ACFF, 0x2C89D420),
-            (0x6DFECCF6, 0xE3AC8063, 0xDC800AEB, 0xD737D4FD),
-            (0x6805D4C6, 0x5F00D915, 0x4139AA3E, 0xE7FDABD1),
-        ]);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_sparse_paritycheck_slow() {
-        let mut crc_results: Vec<(u32, u32, u32, u32)> = Vec::new();
-        for code in CODES[6..].iter() {
-            let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-            let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-            let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
-            let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
-            code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
-            crc_results.push((crc32_u16(&ci), crc32_u16(&cs), crc32_u16(&vi), crc32_u16(&vs)));
-        }
-
-        // These CRC32s were originally generated by this program so only check consistency.
-        assert_eq!(crc_results, vec![
-            (0xE80235D1, 0x32250FDF, 0xDB9A2980, 0xB750D9CA),
-            (0xF4539510, 0x6A88E342, 0xDC592FC2, 0x73046340),
-            (0x4EF927D2, 0x8EBFC56C, 0x49BD9D35, 0x2C840D3B),
-        ]);
     }
 }

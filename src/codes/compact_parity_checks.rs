@@ -4,43 +4,80 @@
 /*
  * Constants used to define the parity check matrices for the TC codes.
  *
- * This representation mirrors that in CCSDS 231.1-O-1, and is expanded
- * at runtime initialisation to create sparse-encoded parity check matrices.
+ * This representation mostly mirrors that in CCSDS 231.1-O-1.
  * Each constant represents a single MxM sub-matrix, where M=n/8.
  * * HZ: All-zero matrix
  * * HI: Identity matrix
  * * HP: Phi: nth right circular shift of I, with lower 5 bits for n
- * * HS: HI+HP
+ * The sum HI+HP is represented by placing the HP entries in the second set of rows.
+ * The third set of rows is all zeros just to match shape with the later H matrices.
  */
 
 pub const HZ: u8 = (0 << 6);
 pub const HI: u8 = (1 << 6);
 pub const HP: u8 = (2 << 6);
-pub const HS: u8 = (HI | HP);
+pub const HR: u8 = (3 << 6);
 
 /// Compact parity matrix for the TC128 code
-pub static TC128_H: [[u8; 8]; 4] = [
-    [HS| 7, HP| 2, HP|14, HP| 6, HZ   , HP| 0, HP|13, HI   ],
-    [HP| 6, HS|15, HP| 0, HP| 1, HI   , HZ   , HP| 0, HP| 7],
-    [HP| 4, HP| 1, HS|15, HP|14, HP|11, HI   , HZ   , HP| 3],
-    [HP| 0, HP| 1, HP| 9, HS|13, HP|14, HP| 1, HI   , HZ   ],
+pub static TC128_H: [[[u8; 11]; 4]; 3] = [
+    [
+        [HI   , HP| 2, HP|14, HP| 6, HZ   , HP| 0, HP|13, HI   , 0, 0, 0],
+        [HP| 6, HI   , HP| 0, HP| 1, HI   , HZ   , HP| 0, HP| 7, 0, 0, 0],
+        [HP| 4, HP| 1, HI   , HP|14, HP|11, HI   , HZ   , HP| 3, 0, 0, 0],
+        [HP| 0, HP| 1, HP| 9, HI   , HP|14, HP| 1, HI   , HZ   , 0, 0, 0],
+    ], [
+        [HP| 7, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HP|15, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HP|15, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HP|13, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+    ]
 ];
 
 /// Compact parity matrix for the TC256 code
-pub static TC256_H: [[u8; 8]; 4] = [
-    [HS|31, HP|15, HP|25, HP| 0, HZ   , HP|20, HP|12, HI   ],
-    [HP|28, HS|30, HP|29, HP|24, HI   , HZ   , HP| 1, HP|20],
-    [HP| 8, HP| 0, HS|28, HP| 1, HP|29, HI   , HZ   , HP|21],
-    [HP|18, HP|30, HP| 0, HS|30, HP|25, HP|26, HI   , HZ   ],
+pub static TC256_H: [[[u8; 11]; 4]; 3] = [
+    [
+        [HI   , HP|15, HP|25, HP| 0, HZ   , HP|20, HP|12, HI   , 0, 0, 0],
+        [HP|28, HI   , HP|29, HP|24, HI   , HZ   , HP| 1, HP|20, 0, 0, 0],
+        [HP| 8, HP| 0, HI   , HP| 1, HP|29, HI   , HZ   , HP|21, 0, 0, 0],
+        [HP|18, HP|30, HP| 0, HI   , HP|25, HP|26, HI   , HZ   , 0, 0, 0],
+    ], [
+        [HP|31, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HP|30, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HP|28, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HP|30, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+    ]
 ];
 
 /// Compact parity matrix for the TC512 code
-pub static TC512_H: [[u8; 8]; 4] = [
-    [HS|63, HP|30, HP|50, HP|25, HZ   , HP|43, HP|62, HI   ],
-    [HP|56, HS|61, HP|50, HP|23, HI   , HZ   , HP|37, HP|26],
-    [HP|16, HP| 0, HS|55, HP|27, HP|56, HI   , HZ   , HP|43],
-    [HP|35, HP|56, HP|62, HS|11, HP|58, HP| 3, HI   , HZ   ],
+pub static TC512_H: [[[u8; 11]; 4]; 3] = [
+    [
+        [HI   , HP|30, HP|50, HP|25, HZ   , HP|43, HP|62, HI   , 0, 0, 0],
+        [HP|56, HI   , HP|50, HP|23, HI   , HZ   , HP|37, HP|26, 0, 0, 0],
+        [HP|16, HP| 0, HI   , HP|27, HP|56, HI   , HZ   , HP|43, 0, 0, 0],
+        [HP|35, HP|56, HP|62, HI   , HP|58, HP| 3, HI   , HZ   , 0, 0, 0],
+    ], [
+        [HP|63, 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , HP|61, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , HP|55, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , HP|11, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
+    ]
 ];
+
 
 /* Parity check matrices corresponding to the TM codes.
  *
@@ -67,70 +104,79 @@ pub static TC512_H: [[u8; 8]; 4] = [
  * rate's parity check matrix right-appended (forming a fatter matrix). For example,
  * H_2/3 = [... | H_1/2], as per section CCSDS 131.0-B-2 7.4.2.
  *
+ * While it's not super space efficient, to make runtime quicker and easier we write the full
+ * prototype matrix for each rate, instead of right-appending the lower-rate matrix dynamically.
+ * This costs 198 extra bytes of flash storage but it's well worth it (seriously, earlier versions
+ * did not do this and it was a nightmare).
+ *
  * The PI_K function is:
  * pi_k(i) = M/4 (( theta_k + floor(4i / M)) mod 4) + (phi_k( floor(4i / M), M ) + i) mod M/4
- *
- * The sizes _should_ be 5x3x3 and 2x3x3 and 4x3x3 for rates 1/2, 2/3, and 4/5, respectively,
- * but this makes it an unholy pain to pass around to the parity expanding functions.
- * So for the sake of type safety we expand these to all be the same shape,
- * sacrificing 36 bytes.
  */
 
 /// Compact parity matrix for the rate-1/2 TM codes
-pub static TM_R12_H: [[[u8; 5]; 3]; 3] = [
+pub static TM_R12_H: [[[u8; 11]; 4]; 3] = [
     [
-        [HZ   , HZ   , HI   , HZ   , HI   ],
-        [HI   , HI   , HZ   , HI   , HP| 2],
-        [HI   , HP| 5, HZ   , HP| 7, HI   ],
+        [HZ   , HZ   , HI   , HZ   , HI   , 0, 0, 0, 0, 0, 0],
+        [HI   , HI   , HZ   , HI   , HP| 2, 0, 0, 0, 0, 0, 0],
+        [HI   , HP| 5, HZ   , HP| 7, HI   , 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0, 0, 0],
     ], [
-        [0    , 0    , 0    , 0    , HP| 1],
-        [0    , 0    , 0    , 0    , HP| 3],
-        [0    , HP| 6, 0    , HP| 8, 0    ],
+        [0    , 0    , 0    , 0    , HP| 1, 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , HP| 3, 0, 0, 0, 0, 0, 0],
+        [0    , HP| 6, 0    , HP| 8, 0    , 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0, 0, 0],
     ], [
-        [0    , 0    , 0    , 0    , 0    ],
-        [0    , 0    , 0    , 0    , HP| 4],
-        [0    , 0    , 0    , 0    , 0    ],
+        [0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , HP| 4, 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0, 0, 0],
     ]
 ];
 
-/// Compact parity left submatrix for the rate-2/3 TM codes
-pub static TM_R23_H: [[[u8; 5]; 3]; 3] = [
+/// Compact parity matrix for the rate-2/3 TM codes
+pub static TM_R23_H: [[[u8; 11]; 4]; 3] = [
     [
-        [HZ   , HZ   , 0, 0, 0],
-        [HP| 9, HI   , 0, 0, 0],
-        [HI   , HP|12, 0, 0, 0],
+        [HZ   , HZ   , HZ   , HZ   , HI   , HZ   , HI   , 0, 0, 0, 0],
+        [HP| 9, HI   , HI   , HI   , HZ   , HI   , HP| 2, 0, 0, 0, 0],
+        [HI   , HP|12, HI   , HP| 5, HZ   , HP| 7, HI   , 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0],
     ], [
-        [0    , 0    , 0, 0, 0],
-        [HP|10, 0    , 0, 0, 0],
-        [0    , HP|13, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , HP| 1, 0, 0, 0, 0],
+        [HP|10, 0    , 0    , 0    , 0    , 0    , HP| 3, 0, 0, 0, 0],
+        [0    , HP|13, 0    , HP| 6, 0    , HP| 8, 0    , 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0],
     ], [
-        [0    , 0    , 0, 0, 0],
-        [HP|11, 0    , 0, 0, 0],
-        [0    , HP|14, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0],
+        [HP|11, 0    , 0    , 0    , 0    , 0    , HP| 4, 0, 0, 0, 0],
+        [0    , HP|14, 0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0, 0],
     ]
 ];
 
-/// Compact parity left submatrix for the rate-4/5 TM codes
-pub static TM_R45_H: [[[u8; 5]; 3]; 3] = [
+/// Compact parity matrix for the rate-4/5 TM codes
+pub static TM_R45_H: [[[u8; 11]; 4]; 3] = [
     [
-        [HZ   , HZ   , HZ   , HZ   , 0],
-        [HP|21, HI   , HP|15, HI   , 0],
-        [HI   , HP|24, HI   , HP|18, 0],
+        [HZ   , HZ   , HZ   , HZ   , HZ   , HZ   , HZ   , HZ   , HI   , HZ   , HI   ],
+        [HP|21, HI   , HP|15, HI   , HP| 9, HI   , HI   , HI   , HZ   , HI   , HP| 2],
+        [HI   , HP|24, HI   , HP|18, HI   , HP|12, HI   , HP| 5, HZ   , HP| 7, HI   ],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
     ], [
-        [0    , 0    , 0    , 0    , 0],
-        [HP|22, 0    , HP|16, 0    , 0],
-        [0    , HP|25, 0    , HP|19, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , HP| 1],
+        [HP|22, 0    , HP|16, 0    , HP|10, 0    , 0    , 0    , 0    , 0    , HP| 3],
+        [0    , HP|25, 0    , HP|19, 0    , HP|13, 0    , HP| 6, 0    , HP| 8, 0    ],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
     ], [
-        [0    , 0    , 0    , 0    , 0],
-        [HP|23, 0    , HP|17, 0    , 0],
-        [0    , HP|26, 0    , HP|20, 0],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
+        [HP|23, 0    , HP|17, 0    , HP|11, 0    , 0    , 0    , 0    , 0    , HP| 4],
+        [0    , HP|26, 0    , HP|20, 0    , HP|14, 0    , 0    , 0    , 0    , 0    ],
+        [0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
     ]
 ];
 
 
 /// Theta constants. Looked up against (k-1) from k=1 to k=26.
 pub static THETA_K: [u8; 26] = [3, 0, 1, 2, 2, 3, 0, 1, 0, 1, 2, 0, 2,
-                            3, 0, 1, 2, 0, 1, 2, 0, 1, 2, 1, 2, 3];
+                                3, 0, 1, 2, 0, 1, 2, 0, 1, 2, 1, 2, 3];
 
 
 /// Phi constants for M=128.

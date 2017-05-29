@@ -7,6 +7,7 @@
 //! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
 use core::f32;
+use core::i8;
 
 use ::codes::LDPCCode;
 
@@ -80,10 +81,10 @@ impl LDPCCode {
     pub fn decode_mp(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
                      llrs: &[f32], output: &mut [u8], working: &mut [f32]) -> (bool, usize)
     {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
-        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+        //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        //assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
+        //assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
         assert_eq!(llrs.len(), self.n());
         assert_eq!(output.len(), self.output_len());
         assert_eq!(working.len(), self.decode_mp_working_len());
@@ -273,10 +274,10 @@ impl LDPCCode {
     fn decode_erasures(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
                        codeword: &mut [u8], working: &mut [u8]) -> (bool, usize)
     {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
-        assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+        //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        //assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
+        //assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
         assert_eq!(codeword.len(), self.output_len());
         assert_eq!(working.len(), self.decode_bf_working_len());
 
@@ -396,8 +397,8 @@ impl LDPCCode {
     pub fn decode_bf(&self, ci: &[u16], cs: &[u16], vi: Option<&[u16]>, vs: Option<&[u16]>,
                      input: &[u8], output: &mut [u8], working: &mut [u8]) -> (bool, usize)
     {
-        assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
+        //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
+        //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(output.len(), self.output_len());
         assert_eq!(working.len(), self.decode_bf_working_len());
@@ -461,11 +462,144 @@ impl LDPCCode {
         (false, erasure_iters + BF_MAX_ITERS)
     }
 
+    pub fn decode_bf_new(&self, input: &[u8], output: &mut [u8], working: &mut [u8]) -> (bool, usize)
+    {
+        assert_eq!(input.len(), self.n()/8);
+        assert_eq!(output.len(), self.output_len());
+        assert_eq!(working.len(), self.decode_bf_working_len());
+        output[..self.n()/8].copy_from_slice(input);
+
+        // top bit of each entry in working is parity check
+        // remaining 7 bits is counter of violations
+
+        for iter in 0..BF_MAX_ITERS {
+            for v in &mut working[..] { *v = 0 }
+
+            // Calculate the parity of each parity check
+            for (check, var) in self.iter_paritychecks_tc() {
+                if output[var/8] >> (7-(var%8)) & 1 == 1 {
+                    working[check] ^= 0x80;
+                }
+            }
+
+            // Count how many parity violations each variable is associated with
+            let mut max_violations = 0;
+            for (check, var) in self.iter_paritychecks_tc() {
+                if working[check] & 0x80 == 0x80 {
+                    working[var] += 1;
+                    if working[var] & 0x7F > max_violations {
+                        max_violations = working[var] & 0x7F;
+                    }
+                }
+            }
+
+            if max_violations == 0 {
+                // With no violations, we've decoded successfully
+                return (true, iter);
+            } else {
+                // Otherwise, flip all the bits that have the maximum number of violations
+                for (var, violations) in working.iter().enumerate() {
+                    if *violations & 0x7F == max_violations {
+                        output[var/8] ^= 1<<(7-(var%8));
+                    }
+                }
+            }
+        }
+
+        (false, BF_MAX_ITERS)
+    }
+
+    pub fn decode_mp_new(&self, llrs: &[i8], output: &mut [u8], working: &mut [i8]) -> (bool, usize) {
+        assert_eq!(llrs.len(), self.n());
+        assert_eq!(output.len(), self.output_len());
+        assert_eq!(working.len(), self.decode_mp_working_len());
+
+        for w in &mut working[..] { *w = 0 }
+        let (u, v) = working.split_at_mut(self.decode_mp_working_len() / 2);
+
+        let n = self.n();
+        let k = self.k();
+        let p = self.punctured_bits();
+        let mut va = vec![0i8; n + p];
+        let mut ui_min1 = vec![0i8; n + p - k];
+        let mut ui_min2 = vec![0i8; n + p - k];
+        let mut ui_sgns = vec![0u8; (n + p - k) / 8];
+        let mut parities = vec![0u8; (n + p - k) / 8];
+
+        for iter in 0..MP_MAX_ITERS {
+            va[..llrs.len()].copy_from_slice(llrs);
+            for x in &mut va[llrs.len()..] { *x = 0 }
+
+            for (idx, (check, var)) in self.iter_paritychecks_tm().enumerate() {
+                if v[idx].abs() == ui_min1[check] {
+                    u[idx] = ui_min2[check];
+                } else {
+                    u[idx] = ui_min1[check];
+                }
+                if ui_sgns[check/8] >> (check%8) & 1 == 1 {
+                    u[idx] = -u[idx];
+                }
+                if v[idx] < 0 {
+                    u[idx] = -u[idx];
+                }
+
+                // accumulate incoming messages to each variable
+                va[var] += u[idx];
+            }
+
+            for o in &mut output[..] { *o = 0 }
+            for var in 0..(self.n() + self.punctured_bits()) {
+                if va[var] <= 0 {
+                    output[var/8] |= 1 << (7 - (var%8));
+                }
+            }
+
+            for x in &mut ui_min1[..] { *x = i8::MAX }
+            for x in &mut ui_min2[..] { *x = i8::MAX }
+            for x in &mut ui_sgns[..] { *x = 0  }
+            for x in &mut parities[..] { *x = 0 }
+            for (idx, (check, var)) in self.iter_paritychecks_tm().enumerate() {
+                // output messages to each parity check
+                let new_v_ai = va[var] - u[idx];
+                if v[idx] != 0 && (new_v_ai >= 0) != (v[idx] >= 0) {
+                    v[idx] = 0;
+                } else {
+                    v[idx] = new_v_ai;
+                }
+
+                // accumulate two minimums
+                if v[idx].abs() < ui_min1[check] {
+                    ui_min2[check] = ui_min1[check];
+                    ui_min1[check] = v[idx].abs();
+                } else if v[idx].abs() < ui_min2[check] {
+                    ui_min2[check] = v[idx].abs();
+                }
+
+                // accumulate signs
+                if v[idx] < 0 {
+                    ui_sgns[check/8] ^= 1<<(check%8);
+                }
+
+                // accumulate parity
+                if output[var/8] >> (7-(var%8)) & 1 == 1 {
+                    parities[check/8] ^= 1<<(check%8);
+                }
+            }
+
+            // check parities
+            if *parities.iter().max().unwrap() == 0 {
+                return (true, iter);
+            }
+        }
+
+        (false, MP_MAX_ITERS)
+    }
+
     /// Convert hard information into LLRs.
     ///
     /// The min-sum decoding used in `decode_mp` is invariant to linear scaling
     /// in LLR, so it doesn't matter which value is picked so long as the sign
-    /// is correct. This function just assigns -/+ 3.0 for 1/0 bits.
+    /// is correct. This function just assigns -/+ 1.0 for 1/0 bits.
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
     ///
@@ -475,7 +609,7 @@ impl LDPCCode {
     pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32]) {
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(llrs.len(), self.n());
-        let llr = -3.0f32;
+        let llr = -1.0f32;
         for (idx, byte) in input.iter().enumerate() {
             for i in 0..8 {
                 llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { llr } else { -llr };
@@ -549,7 +683,7 @@ mod tests {
         let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
                         203, 102, 103, 120, 107,  30, 157, 169];
         let mut llrs = vec![0f32; code.n()];
-        let llr = -3.0;
+        let llr = -1.0;
         code.hard_to_llrs(&hard, &mut llrs);
         assert_eq!(llrs, vec![
              llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
@@ -573,7 +707,7 @@ mod tests {
     #[test]
     fn test_llrs_to_hard() {
         let code = LDPCCode::TC128;
-        let llr = -3.0;
+        let llr = -1.0;
         let llrs = vec![
              llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
              llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
@@ -598,123 +732,8 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_mp() {
-        let code = LDPCCode::TC128;
-
-        // Initialise the parity check matrix
-        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-        let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
-        let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
-        code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
-
-        // Make up a TX codeword (the same one we used to test the encoder)
-        let txcode = vec![255, 254, 253, 252, 251, 250, 249, 248,
-                          203, 102, 103, 120, 107,  30, 157, 169];
-
-        // Copy it and corrupt a few bits
-        let mut rxcode = txcode.clone();
-        rxcode[5] ^= 1<<4 | 1<<2;
-        rxcode[6] ^= 1<<5 | 1<<3;
-
-        // Convert the hard data to LLRs
-        let mut llrs = vec![0f32; code.n()];
-        code.hard_to_llrs(&rxcode, &mut llrs);
-
-        // Allocate working area and output area
-        let mut working = vec![0f32; code.decode_mp_working_len()];
-        let mut decoded = vec![0u8; code.output_len()];
-
-        // Run decoder
-        let (success, _) = code.decode_mp(&ci, &cs, &vi, &vs, &llrs, &mut decoded, &mut working);
-
-        assert!(success);
-        assert_eq!(&decoded[..8], &txcode[..8]);
-    }
-
-    #[test]
-    fn test_decode_erasures() {
-        let code = LDPCCode::TM1280;
-
-        // Initialise the parity check matrix
-        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-        let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
-        let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
-        code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
-
-        // Make up some TX data
-        let txdata: Vec<u8> = (0..128).collect();
-        let mut txcode = vec![0u8; code.n()/8];
-        code.copy_encode(&txdata, &mut txcode);
-
-        // Allocate working area and output area
-        let mut working = vec![0u8; code.decode_bf_working_len()];
-        let mut output = vec![0u8; code.output_len()];
-
-        // Copy TX codeword into output
-        output[..txcode.len()].copy_from_slice(&txcode);
-
-        // Run decoder
-        let (success, _) = code.decode_erasures(&ci, &cs, &vi, &vs, &mut output, &mut working);
-
-        assert!(success);
-
-        // Now run the MP decoder to compare against
-        let mut llrs = vec![0f32; code.n()];
-        let mut output_mp = vec![0u8; code.output_len()];
-        code.hard_to_llrs(&txcode, &mut llrs);
-        let mut working = vec![0f32; code.decode_mp_working_len()];
-        let (success, _) = code.decode_mp(&ci, &cs, &vi, &vs, &llrs, &mut output_mp, &mut working);
-
-        assert!(success);
-        assert_eq!(output, output_mp);
-
-    }
-
-    #[test]
-    fn test_decode_bf_tm() {
-        let code = LDPCCode::TM1280;
-
-        // Initialise the parity check matrix
-        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-        let mut vi = vec![0; code.sparse_paritycheck_vi_len()];
-        let mut vs = vec![0; code.sparse_paritycheck_vs_len()];
-        code.init_sparse_paritycheck(&mut ci, &mut cs, &mut vi, &mut vs);
-
-        // Make up some TX data
-        let txdata: Vec<u8> = (0..128).collect();
-        let mut txcode = vec![0u8; code.n()/8];
-        code.copy_encode(&txdata, &mut txcode);
-
-        // Copy to rx
-        let mut rxcode = txcode.clone();
-
-        // Corrupt some bits
-        rxcode[0] = 0xFF;
-
-        // Allocate working area and output area
-        let mut working = vec![0u8; code.decode_bf_working_len()];
-        let mut output = vec![0u8; code.output_len()];
-
-        // Run decoder
-        let (success, _) = code.decode_bf(&ci, &cs, Some(&vi), Some(&vs),
-                                          &rxcode, &mut output, &mut working);
-
-        assert!(success);
-        assert_eq!(&txcode[..], &output[..txcode.len()]);
-
-    }
-
-    #[test]
-    fn test_decode_bf_tc() {
+    fn test_decode_bf_new_tc() {
         let code = LDPCCode::TC256;
-
-        // Initialise the parity check matrix
-        let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-        let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-        code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
 
         // Make up some TX data
         let txdata: Vec<u8> = (0..16).collect();
@@ -732,11 +751,42 @@ mod tests {
         let mut output = vec![0u8; code.output_len()];
 
         // Run decoder
-        let (success, _) = code.decode_bf(&ci, &cs, None, None,
-                                          &rxcode, &mut output, &mut working);
+        let (success, _) = code.decode_bf_new(&rxcode, &mut output, &mut working);
 
         assert!(success);
         assert_eq!(&txcode[..], &output[..txcode.len()]);
 
+    }
+    #[test]
+    fn test_decode_mp_new() {
+        let code = LDPCCode::TM1280;
+
+        // Make up a TX codeword
+        let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
+        let mut txcode = vec![0u8; code.n()/8];
+        code.copy_encode(&txdata, &mut txcode);
+
+        // Copy it and corrupt the first bit
+        let mut rxcode = txcode.clone();
+        rxcode[0] ^= 1<<7;
+
+        // Convert the hard data to LLRs
+        let mut llrs = vec![0i8; code.n()];
+        for (idx, byte) in rxcode.iter().enumerate() {
+            for i in 0..8 {
+                llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { -1i8 } else { 1i8 };
+            }
+        }
+        //code.hard_to_llrs(&rxcode, &mut llrs);
+
+        // Allocate working area and output area
+        let mut working = vec![0i8; code.decode_mp_working_len()];
+        let mut decoded = vec![0u8; code.output_len()];
+
+        // Run decoder
+        let (success, iters) = code.decode_mp_new(&llrs, &mut decoded, &mut working);
+
+        assert_eq!(&decoded[..8], &txcode[..8]);
+        assert!(success);
     }
 }

@@ -2,7 +2,7 @@
 // Licensed under the MIT license, see LICENSE for details.
 
 #![no_std]
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 //! Labrador-LDPC implements a selection of LDPC error correcting codes,
 //! including encoders and decoders.
@@ -251,7 +251,7 @@
 //! improvements.
 //!
 
-#[cfg(test)]
+//#[cfg(test)]
 #[macro_use]
 extern crate std;
 
