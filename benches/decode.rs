@@ -33,10 +33,11 @@ fn bench_decode_ms(b: &mut Bencher) {
 
     // Allocate working area and output area
     let mut working = vec![0i8; code.decode_ms_working_len()];
+    let mut working_u8 = vec![0u8; code.decode_ms_working_u8_len()];
     let mut rxdata = vec![0u8; code.output_len()];
 
     // Run decoder
-    b.iter(|| code.decode_ms(&llrs, &mut rxdata, &mut working, 50));
+    b.iter(|| code.decode_ms(&llrs, &mut rxdata, &mut working, &mut working_u8, 50));
 
     b.bytes = (code.k() as u64) / 8;
 }
