@@ -1,23 +1,24 @@
 // Copyright 2017 Adam Greig
 // Licensed under the MIT license, see LICENSE for details.
 
-/*
- * Constants used to define the parity check matrices for the TC codes.
- *
- * This representation mostly mirrors that in CCSDS 231.1-O-1.
- * Each constant represents a single MxM sub-matrix, where M=n/8.
- * * HZ:   All-zero matrix
- * * HI:   Identity matrix
- * * HI|n: nth right circular shift of I, with lower 6 bits for n
- * The two sets of matrices are summed together to handle the case HI + HI|n.
- */
+// Constants used to define the parity check matrices for the TC codes.
+//
+// This representation mostly mirrors that in CCSDS 231.1-O-1.
+// Each constant represents a single MxM sub-matrix, where M=n/8.
+// * HZ:   All-zero matrix
+// * HI:   Identity matrix
+// * HI|n: nth right circular shift of I, with lower 6 bits for n
+// The two sets of matrices are summed together to handle the case HI + HI|n.
+// The third zero matrix is annoying - without it we have to pass slices and know about
+// lengths in the iterator, which is so much slower that it seems worth the 44-byte-per-code-used
+// extra space used in code memory.
+//
 
 pub const HZ: u8 = (0 << 6);
 pub const HI: u8 = (1 << 6);
-pub const HP: u8 = (2 << 6);
 
 /// Compact parity matrix for the TC128 code
-pub static TC128_H: [[[u8; 11]; 4]; 2] = [
+pub static TC128_H: [[[u8; 11]; 4]; 3] = [
     [
         [HI   , HI| 2, HI|14, HI| 6, HZ   , HI| 0, HI|13, HI   , 0, 0, 0],
         [HI| 6, HI   , HI| 0, HI| 1, HI   , HZ   , HI| 0, HI| 7, 0, 0, 0],
@@ -28,11 +29,16 @@ pub static TC128_H: [[[u8; 11]; 4]; 2] = [
         [0    , HI|15, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , HI|15, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , 0    , HI|13, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
     ]
 ];
 
 /// Compact parity matrix for the TC256 code
-pub static TC256_H: [[[u8; 11]; 4]; 2] = [
+pub static TC256_H: [[[u8; 11]; 4]; 3] = [
     [
         [HI   , HI|15, HI|25, HI| 0, HZ   , HI|20, HI|12, HI   , 0, 0, 0],
         [HI|28, HI   , HI|29, HI|24, HI   , HZ   , HI| 1, HI|20, 0, 0, 0],
@@ -43,11 +49,16 @@ pub static TC256_H: [[[u8; 11]; 4]; 2] = [
         [0    , HI|30, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , HI|28, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , 0    , HI|30, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
     ]
 ];
 
 /// Compact parity matrix for the TC512 code
-pub static TC512_H: [[[u8; 11]; 4]; 2] = [
+pub static TC512_H: [[[u8; 11]; 4]; 3] = [
     [
         [HI   , HI|30, HI|50, HI|25, HZ   , HI|43, HI|62, HI   , 0, 0, 0],
         [HI|56, HI   , HI|50, HI|23, HI   , HZ   , HI|37, HI|26, 0, 0, 0],
@@ -58,43 +69,45 @@ pub static TC512_H: [[[u8; 11]; 4]; 2] = [
         [0    , HI|61, 0    , 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , HI|55, 0    , 0    , 0    , 0    , 0    , 0, 0, 0],
         [0    , 0    , 0    , HI|11, 0    , 0    , 0    , 0    , 0, 0, 0],
+    ], [
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0],
     ]
 ];
 
 
-/* Parity check matrices corresponding to the TM codes.
- *
- * This representation mirrors the definition in CCSDS 131.0-B-1,
- * and can be expanded at runtime to create the actual matrix in memory.
- * Each const represents a single MxM sub-matrix, where M is a function
- * of the information block length and the rate:
- *
- * -----------------------------------------
- * |k     | Rate 1/2 | Rate 2/3 | Rate 4/5 |
- * -----------------------------------------
- * |1024  |      512 |      256 |      128 |
- * |4096  |     2048 |     1024 |      512 |
- * |16384 |     8192 |     4096 |     2048 |
- * -----------------------------------------
- *
- * The HP constant is now used for PI_K which goes via the lookup table below.
- * The HZ constant is an MxM zero block.
- * The HI macro an MxM identity, as previously.
- *
- * Each matrix is defined in three parts which are to be added together mod 2.
- *
- * Additionally the matrices for the higher rate codes are assumed to have the previous (lower)
- * rate's parity check matrix right-appended (forming a fatter matrix). For example,
- * H_2/3 = [... | H_1/2], as per section CCSDS 131.0-B-2 7.4.2.
- *
- * While it's not super space efficient, to make runtime quicker and easier we write the full
- * prototype matrix for each rate, instead of right-appending the lower-rate matrix dynamically.
- * This costs 198 extra bytes of flash storage but it's well worth it (seriously, earlier versions
- * did not do this and it was a nightmare).
- *
- * The PI_K function is:
- * pi_k(i) = M/4 (( theta_k + floor(4i / M)) mod 4) + (phi_k( floor(4i / M), M ) + i) mod M/4
- */
+// Parity check matrices corresponding to the TM codes.
+//
+// This representation mirrors the definition in CCSDS 131.0-B-1,
+// and can be expanded at runtime to create the actual matrix in memory.
+// Each const represents a single MxM sub-matrix, where M is a function
+// of the information block length and the rate:
+//
+// -----------------------------------------
+// |k     | Rate 1/2 | Rate 2/3 | Rate 4/5 |
+// -----------------------------------------
+// |1024  |      512 |      256 |      128 |
+// |4096  |     2048 |     1024 |      512 |
+// |16384 |     8192 |     4096 |     2048 |
+// -----------------------------------------
+//
+// The HP constant is used for PI_K which goes via the lookup table below, with value K-1.
+// The HI macro is an MxM identity, as previously, and we don't use it with any rotation.
+// The HZ constant is an MxM zero block.
+//
+// Each matrix is defined in three parts which are to be added together mod 2.
+//
+// While it's not super space efficient, to make runtime quicker and easier we write the full
+// prototype matrix for each rate, instead of right-appending the lower-rate matrix dynamically.
+// This costs 198 extra bytes of flash storage but it's well worth it (seriously, earlier versions
+// did not do this and it was a nightmare).
+//
+// The PI_K function is:
+// pi_k(i) = M/4 (( theta_k + floor(4i / M)) mod 4) + (phi_k( floor(4i / M), M ) + i) mod M/4
+
+pub const HP: u8 = (2 << 6);
 
 /// Compact parity matrix for the rate-1/2 TM codes
 pub static TM_R12_H: [[[u8; 11]; 4]; 3] = [

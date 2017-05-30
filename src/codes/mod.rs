@@ -226,68 +226,96 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     output_len: (8192 + 2048)/8,
 };
 
+/// Iterator over a code's parity check matrix.
+///
+/// Iterating gives values `(check, variable)` which are the indices
+/// of an edge on the parity check matrix, where `check` is the row
+/// and `variable` is the column.
+///
+/// ParityIter is obtained from `LDPCCode::iter_paritychecks()`.
 pub struct ParityIter {
     phi: &'static [[u16; 26]; 4],
-    prototype: &'static [[[u8; 11]; 4]],
-    prototype_rows_sub1: usize,
-    prototype_cols_sub1: usize,
-    prototype_subs_sub1: usize,
+    prototype: &'static [[[u8; 11]; 4]; 3],
     m: usize,
-    divm: usize,
-    modm: usize,
-    modmd4: usize,
+    logmd4: usize,  // log2(M/4), used to multiply and divide by M/4
+    modm: usize,    // the bitmask to AND with to accomplish "mod M", equals m-1
+    modmd4: usize,  // the bitmask to AND with to accomplish "mod M/4", equals (m/4)-1
     rowidx: usize,
     colidx: usize,
     sub_mat_idx: usize,
     sub_mat: u8,
+    sub_mat_k: usize,
     check: usize,
 }
 
 impl Iterator for ParityIter {
     type Item = (usize, usize);
 
-    #[inline]
+    /// Compute the next parity edge.
+    ///
+    /// This function really really wants to be inlined for performance. It does almost no
+    /// computation but returns thousands of times, so the overhead of a function call
+    /// completely dominates its runtime if not inlined.
+    #[inline(always)]
     fn next(&mut self) -> Option<(usize, usize)> {
         use self::compact_parity_checks::{HI, HP, THETA_K};
+
+        // This function demands careful optimisation. Not only will it be the hottest inner loop
+        // of any algorithm on the parity check matrix, but because it's an iterator it's called
+        // from the start thousands of times. We use this annoying loop structure so that the
+        // hot path, entering and returning almost right away, is as simple as possible.
+        //
+        // Terms:
+        //  * prototype is the set of 3 4x11 design matrices
+        //  * sub_mat_idx chooses one of those 3 design matrices
+        //  * rowidx and colidx choose an element from that design matrix
+        //  * sub_mat is set to that element, and represents an MxM block of the full parity check
+        //  * check ranges 0..M and is the row inside that MxM block
+        //
+        // For each check in 0..M we compute the corresponding column inside that MxM block,
+        // either using a rotated identity matrix or using the phi and theta lookups,
+        // add the offset to get to this block (rowidx*M, colidx*M), and return the result.
+
         // Loop over rows of the prototype
         loop {
             // Loop over columns of the prototype
             loop {
                 // Loop over the three sub-prototypes we have to sum for each cell of the prototype
                 loop {
-                    // Identity matrix with a right-shift
-                    if self.sub_mat & HI == HI && self.check < self.m {
-                        let rot = (self.sub_mat & 0x3F) as usize;
-                        let chk = self.rowidx * self.m + self.check;
-                        let var = if rot == 0 {
-                            self.colidx * self.m + self.check
-                        } else {
-                            self.colidx * self.m + ((self.check + rot) & self.modm)
-                        };
-                        self.check += 1;
-                        return Some((chk, var));
+                    // If we have not yet yielded enough edges for this sub_mat
+                    if self.check < self.m {
+                        match self.sub_mat & (HP | HI) {
+                            HI => { // Identity matrix with a right-shift
+                                //let rot = (self.sub_mat & 0x3F) as usize;
+                                let chk = self.rowidx * self.m + self.check;
+                                let var = self.colidx * self.m + ((self.check + self.sub_mat_k) & self.modm);
+                                self.check += 1;
+                                return Some((chk, var));
+                            },
+                            HP => { // Permutation matrix using theta and phi lookup tables
+                                //let k = (self.sub_mat & 0x3F) as usize;
+                                let pi = (((THETA_K[self.sub_mat_k-1] as usize + (self.check>>self.logmd4)) % 4)
+                                          << self.logmd4)
+                                         + ((self.phi[(self.check)>>self.logmd4][self.sub_mat_k-1] as usize
+                                             + self.check) & self.modmd4);
+                                let chk = self.rowidx * self.m + self.check;
+                                let var = self.colidx * self.m + pi;
+                                self.check += 1;
+                                return Some((chk, var));
+                            },
+                            _  => ()
+                        }
                     }
 
-                    // Permutation matrix using theta and phi lookup tables
-                    if self.sub_mat & HP == HP && self.check < self.m {
-                        let k = (self.sub_mat & 0x3F) as usize;
-                        let chk = self.rowidx * self.m + self.check;
-                        let pi = self.m/4
-                                  * ((THETA_K[k-1] as usize + ((4*self.check)>>self.divm)) % 4)
-                                 + ((self.phi[(4*self.check)>>self.divm][k-1] as usize
-                                     + self.check) & self.modmd4);
-                        let var = self.colidx * self.m + pi;
-                        self.check += 1;
-                        return Some((chk, var));
-                    }
-
+                    // Once we're done yielding results for this cell, reset check to 0.
                     self.check = 0;
 
                     // Advance which of the three sub-matrices we're summing.
-                    // If sub_mat is 0, there won't be any new ones to sum, so stop there too.
-                    if self.sub_mat != 0 && self.sub_mat_idx < self.prototype_subs_sub1 {
+                    // If sub_mat is 0, there won't be any new ones to sum, so stop then too.
+                    if self.sub_mat != 0 && self.sub_mat_idx < 2 {
                         self.sub_mat_idx += 1;
                         self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
                     } else {
                         self.sub_mat_idx = 0;
                         break;
@@ -295,9 +323,10 @@ impl Iterator for ParityIter {
                 }
 
                 // Advance colidx. The number of active columns depends on the prototype.
-                if self.colidx < self.prototype_cols_sub1 {
+                if self.colidx < 10 {
                     self.colidx += 1;
                     self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
                 } else {
                     self.colidx = 0;
                     break;
@@ -305,9 +334,10 @@ impl Iterator for ParityIter {
             }
 
             // Advance rowidx. The number of rows depends on the prototype.
-            if self.rowidx < self.prototype_rows_sub1 {
+            if self.rowidx < 3 {
                 self.rowidx += 1;
                 self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
+                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
             } else {
                 return None;
             }
@@ -376,6 +406,15 @@ impl LDPCCode {
         }
     }
 
+    /// Get an iterator over all parity check matrix edges for this code.
+    ///
+    /// All included codes have a corresponding parity check matrix, which is defined
+    /// using a very compact representation that can be expanded into the full parity
+    /// check matrix. This function returns an efficient iterator over all edges in
+    /// the parity check matrix, in a deterministic but otherwise unspecified order.
+    ///
+    /// The iterator yields (check, variable) pairs, corresponding to the index of a
+    /// row and column in the parity check matrix which contains a 1.
     pub fn iter_paritychecks(&self) -> ParityIter {
         match *self {
             LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512 => self.iter_paritychecks_tc(),
@@ -384,6 +423,7 @@ impl LDPCCode {
         }
     }
 
+    /// Set up a ParityIter for a TC code
     fn iter_paritychecks_tc(&self) -> ParityIter {
         let prototype = match *self {
             LDPCCode::TC128 => &compact_parity_checks::TC128_H,
@@ -393,16 +433,20 @@ impl LDPCCode {
             _               => unreachable!(),
         };
 
+        let subm = prototype[0][0][0];
+
         let m = self.submatrix_size();
 
+        // We can use any phi as it won't be touched by the iterator (no HS consts for TC codes).
+        let phi = &self::compact_parity_checks::PHI_J_K_M128;
+
         ParityIter {
-            phi: &self::compact_parity_checks::PHI_J_K_M128, prototype,
-            prototype_cols_sub1: 8-1, prototype_rows_sub1: 4-1, prototype_subs_sub1: 2-1,
-            m, divm: m.trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: prototype[0][0][0], check: 0,
+            phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: subm, sub_mat_k: (subm & 0x3F) as usize, check: 0,
         }
     }
 
+    /// Set up a ParityIter for a TM code
     fn iter_paritychecks_tm(&self) -> ParityIter {
         let m = self.submatrix_size();
         let phi = match m {
@@ -424,11 +468,11 @@ impl LDPCCode {
             _  => unreachable!(),
         };
 
+        let subm = prototype[0][0][0];
+
         ParityIter {
-            phi, prototype, prototype_cols_sub1: prototype_cols - 1,
-            prototype_rows_sub1: 3-1, prototype_subs_sub1: 3-1,
-            m, divm: m.trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: prototype[0][0][0],
+            phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: subm, sub_mat_k: (subm & 0x3F) as usize,
         }
     }
 }
@@ -437,19 +481,11 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use super::{LDPCCode, CodeParams,
-                TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
+    use super::{LDPCCode};
 
     const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
                                    LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
                                    LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
-    ];
-
-    const PARAMS: [CodeParams; 9] = [TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                                     TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                                     TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
     ];
 
     fn crc32_u16(crc: u32, data: u32) -> u32 {
