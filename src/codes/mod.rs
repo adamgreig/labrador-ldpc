@@ -244,7 +244,7 @@ pub struct ParityIter {
     colidx: usize,
     sub_mat_idx: usize,
     sub_mat: u8,
-    sub_mat_k: usize,
+    sub_mat_val: usize,
     check: usize,
 }
 
@@ -284,20 +284,22 @@ impl Iterator for ParityIter {
                 loop {
                     // If we have not yet yielded enough edges for this sub_mat
                     if self.check < self.m {
+                        // Weirdly doing this & operation every loop is faster than doing it just
+                        // when we update self.sub_mat. Presumably the hint helps it match.
                         match self.sub_mat & (HP | HI) {
                             HI => { // Identity matrix with a right-shift
-                                //let rot = (self.sub_mat & 0x3F) as usize;
                                 let chk = self.rowidx * self.m + self.check;
-                                let var = self.colidx * self.m + ((self.check + self.sub_mat_k) & self.modm);
+                                let var = self.colidx * self.m
+                                          + ((self.check + self.sub_mat_val) & self.modm);
                                 self.check += 1;
                                 return Some((chk, var));
                             },
                             HP => { // Permutation matrix using theta and phi lookup tables
-                                //let k = (self.sub_mat & 0x3F) as usize;
-                                let pi = (((THETA_K[self.sub_mat_k-1] as usize + (self.check>>self.logmd4)) % 4)
-                                          << self.logmd4)
-                                         + ((self.phi[(self.check)>>self.logmd4][self.sub_mat_k-1] as usize
-                                             + self.check) & self.modmd4);
+                                let pi =
+                                    (((THETA_K[self.sub_mat_val] as usize +
+                                       (self.check>>self.logmd4)) % 4) << self.logmd4)
+                                    + ((self.phi[self.check>>self.logmd4][self.sub_mat_val]
+                                        as usize + self.check) & self.modmd4);
                                 let chk = self.rowidx * self.m + self.check;
                                 let var = self.colidx * self.m + pi;
                                 self.check += 1;
@@ -315,7 +317,7 @@ impl Iterator for ParityIter {
                     if self.sub_mat != 0 && self.sub_mat_idx < 2 {
                         self.sub_mat_idx += 1;
                         self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
-                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
+                        self.sub_mat_val = (self.sub_mat & 0x3F) as usize;
                     } else {
                         self.sub_mat_idx = 0;
                         break;
@@ -326,7 +328,7 @@ impl Iterator for ParityIter {
                 if self.colidx < 10 {
                     self.colidx += 1;
                     self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
-                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
+                    self.sub_mat_val = (self.sub_mat & 0x3F) as usize;
                 } else {
                     self.colidx = 0;
                     break;
@@ -337,7 +339,7 @@ impl Iterator for ParityIter {
             if self.rowidx < 3 {
                 self.rowidx += 1;
                 self.sub_mat = self.prototype[self.sub_mat_idx][self.rowidx][self.colidx];
-                        self.sub_mat_k = (self.sub_mat & 0x3F) as usize;
+                self.sub_mat_val = (self.sub_mat & 0x3F) as usize;
             } else {
                 return None;
             }
@@ -442,7 +444,7 @@ impl LDPCCode {
 
         ParityIter {
             phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: subm, sub_mat_k: (subm & 0x3F) as usize, check: 0,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: subm, sub_mat_val: (subm & 0x3F) as usize, check: 0,
         }
     }
 
@@ -472,7 +474,7 @@ impl LDPCCode {
 
         ParityIter {
             phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: subm, sub_mat_k: (subm & 0x3F) as usize,
+            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: subm, sub_mat_val: (subm & 0x3F) as usize,
         }
     }
 }
