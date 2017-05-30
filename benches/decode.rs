@@ -9,7 +9,7 @@ extern crate labrador_ldpc;
 use labrador_ldpc::LDPCCode;
 
 #[bench]
-fn bench_decode_mp(b: &mut Bencher) {
+fn bench_decode_ms(b: &mut Bencher) {
     let code = LDPCCode::TM5120;
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
@@ -32,17 +32,17 @@ fn bench_decode_mp(b: &mut Bencher) {
     }
 
     // Allocate working area and output area
-    let mut working = vec![0i8; code.decode_mp_working_len()];
+    let mut working = vec![0i8; code.decode_ms_working_len()];
     let mut rxdata = vec![0u8; code.output_len()];
 
     // Run decoder
-    b.iter(|| code.decode_mp_new(&llrs, &mut rxdata, &mut working));
+    b.iter(|| code.decode_ms(&llrs, &mut rxdata, &mut working, 50));
 
     b.bytes = (code.k() as u64) / 8;
 }
 
 #[bench]
-fn bench_decode_bf_new(b: &mut Bencher) {
+fn bench_decode_bf(b: &mut Bencher) {
     let code = LDPCCode::TC256;
 
     let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
@@ -61,7 +61,7 @@ fn bench_decode_bf_new(b: &mut Bencher) {
 
     // Run decoder
     b.iter(|| {
-        let (_, iters) = code.decode_bf_new(&rxcode, &mut output, &mut working);
+        let (_, iters) = code.decode_bf(&rxcode, &mut output, &mut working, 50);
         assert_eq!(iters, 50);
     });
 

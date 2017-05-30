@@ -93,7 +93,7 @@ pub struct CodeParams {
 
     /// Length of the working area required for the message-passing decoder.
     /// Equal to 2*paritycheck_sum.
-    pub decode_mp_working_len: usize,
+    pub decode_ms_working_len: usize,
 
     /// Length of output required from any decoder.
     /// Equal to (n+punctured_bits)/8.
@@ -110,7 +110,7 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 512,
 
     decode_bf_working_len: 128 + 0,
-    decode_mp_working_len: 2 * 512,
+    decode_ms_working_len: 2 * 512,
     output_len: 128/8,
 };
 
@@ -124,7 +124,7 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 1024,
 
     decode_bf_working_len: 256 + 0,
-    decode_mp_working_len: 2 * 1024,
+    decode_ms_working_len: 2 * 1024,
     output_len: 256/8,
 };
 
@@ -138,7 +138,7 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 2048,
 
     decode_bf_working_len: 512 + 0,
-    decode_mp_working_len: 2 * 2048,
+    decode_ms_working_len: 2 * 2048,
     output_len: 512/8,
 };
 
@@ -152,7 +152,7 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 4992,
 
     decode_bf_working_len: 1280 + 128,
-    decode_mp_working_len: 2 * 4992,
+    decode_ms_working_len: 2 * 4992,
     output_len: (1280 + 128)/8,
 };
 
@@ -166,7 +166,7 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 5888,
 
     decode_bf_working_len: 1536 + 256,
-    decode_mp_working_len: 2 * 5888,
+    decode_ms_working_len: 2 * 5888,
     output_len: (1536 + 256)/8,
 };
 
@@ -180,7 +180,7 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 7680,
 
     decode_bf_working_len: 2048 + 512,
-    decode_mp_working_len: 2 * 7680,
+    decode_ms_working_len: 2 * 7680,
     output_len: (2048 + 512)/8,
 };
 
@@ -194,7 +194,7 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 19968,
 
     decode_bf_working_len: 5120 + 512,
-    decode_mp_working_len: 2 * 19968,
+    decode_ms_working_len: 2 * 19968,
     output_len: (5120 + 512)/8,
 };
 
@@ -208,7 +208,7 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 23552,
 
     decode_bf_working_len: 6144 + 1024,
-    decode_mp_working_len: 2 * 23552,
+    decode_ms_working_len: 2 * 23552,
     output_len: (6144 + 1024)/8,
 };
 
@@ -222,7 +222,7 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 30720,
 
     decode_bf_working_len: 8192 + 2048,
-    decode_mp_working_len: 2 * 30720,
+    decode_ms_working_len: 2 * 30720,
     output_len: (8192 + 2048)/8,
 };
 

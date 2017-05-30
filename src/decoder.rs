@@ -3,19 +3,30 @@
 
 //! This module provides decoding functions for turning codewords into data.
 //!
-//! Please refer to the `decode_mp` and `decode_bf` methods on
+//! Please refer to the `decode_ms` and `decode_bf` methods on
 //! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
-use core::f32;
 use core::i8;
+use core::i16;
+use core::i32;
+use core::f32;
+use core::f64;
+
+use core::ops::{Add,AddAssign,Neg,Sub};
 
 use ::codes::LDPCCode;
 
-/// Ugh gross yuck.
-///
-/// No `f32::abs()` available with `no_std`, and it's not worth bringing in some
-/// dependency just to get it. This is however used right in the hottest decoder
-/// loop and it's so much faster than the obvious `if f < 0 { -f } else { f }`.
+// Ugh gross yuck.
+//
+// No `f32::abs()` available with `no_std`, and it's not worth bringing in some
+// dependency just to get it. This is however used right in the hottest decoder
+// loop and it's so much faster than the obvious `if f < 0 { -f } else { f }`.
+fn fabs(f: f64) -> f64 {
+    unsafe {
+        let x: u64 = *((&f as *const f64) as *const u64) & 0x7FFFFFFFFFFFFFFF;
+        *((&x as *const u64) as *const f64)
+    }
+}
 fn fabsf(f: f32) -> f32 {
     unsafe {
         let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFFFFFF;
@@ -23,23 +34,67 @@ fn fabsf(f: f32) -> f32 {
     }
 }
 
-const MP_MAX_ITERS: usize = 50;
-const BF_MAX_ITERS: usize = 50;
-const ERASURE_MAX_ITERS: usize = 30;
+/// Trait for types that the min-sum decoder can operate with.
+///
+/// Implemented for `i8`, `i16`, `i32`, `f32`, and `f64`.
+pub trait DecodeFrom:
+    Sized + Clone + Copy + PartialEq + Add + AddAssign +
+    Neg<Output=Self> + Sub<Output=Self> + PartialOrd
+{
+    /// 1 in T
+    fn one()            -> Self;
+    /// 0 in T
+    fn zero()           -> Self;
+    /// Maximum value T can represent
+    fn maxval()         -> Self;
+    /// Absolute value of self
+    fn abs(&self)       -> Self;
+}
+
+impl DecodeFrom for i8 {
+    fn one()            -> i8 { 1 }
+    fn zero()           -> i8 { 0 }
+    fn maxval()         -> i8 { i8::MAX }
+    fn abs(&self)       -> i8 { i8::abs(*self) }
+}
+impl DecodeFrom for i16 {
+    fn one()            -> i16 { 1 }
+    fn zero()           -> i16 { 0 }
+    fn maxval()         -> i16 { i16::MAX }
+    fn abs(&self)       -> i16 { i16::abs(*self) }
+}
+impl DecodeFrom for i32 {
+    fn one()            -> i32 { 1 }
+    fn zero()           -> i32 { 0 }
+    fn maxval()         -> i32 { i32::MAX }
+    fn abs(&self)       -> i32 { i32::abs(*self) }
+}
+impl DecodeFrom for f32 {
+    fn one()            -> f32 { 1.0 }
+    fn zero()           -> f32 { 0.0 }
+    fn maxval()         -> f32 { f32::MAX }
+    fn abs(&self)       -> f32 { fabsf(*self) }
+}
+impl DecodeFrom for f64 {
+    fn one()            -> f64 { 1.0 }
+    fn zero()           -> f64 { 0.0 }
+    fn maxval()         -> f64 { f64::MAX }
+    fn abs(&self)       -> f64 { fabs(*self) }
+}
 
 impl LDPCCode {
 
-    /// Get the length of [f32] required for the working area of `decode_bf`.
+    /// Get the length of [u8] required for the working area of `decode_bf`.
     ///
     /// Equal to n + punctured_bits.
     pub fn decode_bf_working_len(&self) -> usize {
         self.n() + self.punctured_bits()
     }
 
-    /// Get the length of [f32] required for the working area of `decode_mp`.
+    /// Get the length of [T] required for the working area of `decode_ms`.
     ///
-    /// Equal to 2 * paritycheck_sum.
-    pub fn decode_mp_working_len(&self) -> usize {
+    /// Equal to 2 * paritycheck_sum. XXX
+    pub fn decode_ms_working_len(&self) -> usize {
         2 * self.paritycheck_sum() as usize
     }
 
@@ -48,199 +103,6 @@ impl LDPCCode {
     /// Equal to (n+punctured_bits)/8.
     pub fn output_len(&self) -> usize {
         (self.n() + self.punctured_bits()) / 8
-    }
-
-
-    /// Message passing based decoder.
-    ///
-    /// This algorithm is slower, requires more memory, and ideally operates on soft information,
-    /// but it provides very close to optimal decoding. If you don't have soft information but do
-    /// have the channel BER, you can use `decode_hard_to_llrs_with_ber` to go from hard
-    /// information (bytes from a receiver) to soft information (LLRs). If you don't have that, you
-    /// can use `decode_hard_to_llrs` to generate arbitrary LLRs from the hard information.
-    ///
-    /// Requires:
-    ///
-    /// * `ci`, `cs`, `vi`, `vs` must all be initialised from from `init_sparse_paritycheck()`,
-    /// * `llrs` must be `n` long, with positive numbers more likely to be 0.
-    /// * `output` must be allocated to (n+p)/8 bytes, of which the first k/8 bytes will be set
-    ///   to the decoded message (and the rest to the parity bits of the complete codeword)
-    /// * `working` is the working area which must be provided and must have
-    ///   `decode_mp_working_len` elements, equal to 2*paritycheck_sum.
-    ///
-    /// Returns decoding success and the number of iterations run for.
-    ///
-    /// ## Panics
-    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
-    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
-    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
-    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
-    /// * `llrs.len()` must be exactly `self.n()`
-    /// * `output.len()` must be exactly `self.output_len()`.
-    /// * `working.len()` must be exactly `self.decode_mp_working_len()`.
-    pub fn decode_mp(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
-                     llrs: &[f32], output: &mut [u8], working: &mut [f32]) -> (bool, usize)
-    {
-        //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        //assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
-        //assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
-        assert_eq!(llrs.len(), self.n());
-        assert_eq!(output.len(), self.output_len());
-        assert_eq!(working.len(), self.decode_mp_working_len());
-
-        let n = self.n();
-        let p = self.punctured_bits();
-
-        // Initialise working area to all zeros
-        for w in &mut working[..] {
-            *w = 0.0;
-        }
-
-        // Split working area:
-        // * u(i->a) will hold messages from checks (i) to variables (a)
-        // * v(a->i) will hold messages from variables (a) to checks (i)
-        let (u, v) = working.split_at_mut(self.decode_mp_working_len() / 2);
-
-        for iter in 0..MP_MAX_ITERS {
-            // Track whether we've had any parity violations this iteration.
-            // If we haven't at the end of an iteration, we can stop immediately.
-            // Set to false as soon as a single violation is encountered.
-            let mut parity_ok = true;
-
-            // Clear the output, we'll OR bits into it as we run through variable nodes
-            for o in &mut output[..] {
-                *o = 0;
-            }
-
-            // Update variable nodes' messages to check nodes.
-            // For each variable node, for each check node connected to it,
-            // initialise this message v(a->i) to the LLR (or 0 for punctured bits),
-            // and then add on all of the incoming messages not from the current check node.
-            // Additionally we sum all u(i->a) for this a to marginalise this variable
-            // node and see if the hard decoding gives a valid codeword, which is out
-            // signal to stop iteration.
-            for a in 0..(n+p) {
-                // Sum up the marginal LLR for a, starting with llrs[a] or 0 for punctured bits.
-                let mut llr_a = if a < n { llrs[a] } else { 0.0 };
-
-                // For each check node i connected to this variable node a
-                for a_i in vs[a]..vs[a+1] {
-                    let a_i = a_i as usize;
-                    let i = vi[a_i] as usize;
-                    let prev_v_ai = v[a_i];
-                    v[a_i] = if a < n { llrs[a] } else { 0.0 };
-
-                    // For each check node j connected to variable node a
-                    for j in &vi[vs[a] as usize..vs[a+1] as usize] {
-                        let j = *j as usize;
-
-                        // We need to find where the incoming messages u(j->a) are stored in u.
-                        // This means going through every variable node connected to check node j,
-                        // and seeing if it's equal to a, and if so, using that message.
-                        // This loop could be replaced by another index table the same size as ci,
-                        // which might save time if this section proves to be slow.
-                        for (j_b, b) in ci[cs[j] as usize .. cs[j+1] as usize].iter().enumerate() {
-                            if a == *b as usize {
-                                let j_a = cs[j] as usize + j_b;
-
-                                // Sum up just the incoming messages not from i for v(a->i)
-                                if j != i {
-                                    v[a_i] += u[j_a];
-                                }
-
-                                // Sum up all incoming messages for llr_a
-                                llr_a += u[j_a];
-
-                                // Once we find a, we can stop looking through variables on j.
-                                break;
-                            }
-                        }
-                    }
-
-                    // Our min sum correction trick is to zero any messages that have changed
-                    // sign since last time, as per Savin 2009 http://arxiv.org/abs/0803.1090v2
-                    if prev_v_ai != 0.0 && (v[a_i] >= 0.0) != (prev_v_ai >= 0.0) {
-                        v[a_i] = 0.0;
-                    }
-                }
-
-                // Hard decode the marginal LLR for a to determine this output bit.
-                // (We previously zeroed output, so just set 1 bits).
-                if llr_a <= 0.0 {
-                    output[a/8] |= 1 << (7 - (a%8));
-                }
-            }
-
-            // Update check nodes' messages to variable nodes (i=0..(n-k+p)).
-            // For each check node, for each variable node connected to it,
-            // initialise the message u(i->a) to f32::MAX and then find the minimum of all
-            // incoming messages as well as the product of all their signs.
-            // Additionally we use this loop to keep track of the parity sum for this check
-            // node under hard decoding, and use that to see if the overall message has been
-            // decoded yet.
-            for (i, cs_ss) in cs.windows(2).enumerate() {
-                let mut parity = 0;
-                let (cs_start, cs_end) = (cs_ss[0] as usize, cs_ss[1] as usize);
-
-                // For each variable node a connected to check node i
-                for i_a in cs_start..cs_end {
-                    let a = ci[i_a] as usize;
-                    let mut sgnprod = 1.0f32;
-                    let mut minacc = f32::MAX;
-
-                    // For each variable node b connected to check node i
-                    for b in &ci[cs_start..cs_end] {
-                        let b = *b as usize;
-                        // Don't process the message from the current variable node
-                        if b == a {
-                            continue;
-                        }
-
-                        // We need to find where the incoming messages v(b->i) are stored in v.
-                        // As with the u(j->a) messages, we need to go through each check node j
-                        // associated with variable node b, and if j==i we use the message.
-                        // This loop could also be replaced by another index table the same size
-                        // as vi, which might be useful here.
-                        for (b_j, j) in vi[vs[b] as usize .. vs[b+1] as usize].iter().enumerate() {
-                            if i == *j as usize {
-                                let b_i = vs[b] as usize + b_j;
-
-                                if v[b_i] < 0.0 {
-                                    sgnprod = -sgnprod;
-                                }
-                                let abs_v_bi = fabsf(v[b_i]);
-                                if abs_v_bi < minacc {
-                                    minacc = abs_v_bi;
-                                }
-
-                                // As soon as we find ourselves, we can stop looking.
-                                break;
-                            }
-                        }
-                    }
-
-                    // Update u(i->a) with our accumulated minimum and appropriate sign.
-                    u[i_a] = sgnprod * minacc;
-
-                    // Work out this node's parity
-                    parity += (output[a/8] >> (7 - (a%8))) & 1;
-                }
-
-                // Odd parity is bad parity
-                if (parity & 1) == 1 {
-                    parity_ok = false;
-                }
-            }
-
-            // If every parity check was satisfied, we're done.
-            if parity_ok {
-                return (true, iter);
-            }
-        }
-
-        // If we finished the loop, we ran out of iterations :(
-        (false, MP_MAX_ITERS)
     }
 
     /// Hard erasure decoding algorithm.
@@ -271,13 +133,13 @@ impl LDPCCode {
     ///
     /// Returns `(success, number of iterations run)`. Note that `success`=false only indicates
     /// that not every punctured bit was correctly recovered; many may have been successful.
-    fn decode_erasures(&self, ci: &[u16], cs: &[u16], vi: &[u16], vs: &[u16],
-                       codeword: &mut [u8], working: &mut [u8]) -> (bool, usize)
+    fn decode_erasures(&self, codeword: &mut [u8], working: &mut [u8], maxiters: usize) -> (bool, usize)
     {
         //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
         //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
         //assert_eq!(vi.len(), self.sparse_paritycheck_vi_len());
         //assert_eq!(vs.len(), self.sparse_paritycheck_vs_len());
+        /*
         assert_eq!(codeword.len(), self.output_len());
         assert_eq!(working.len(), self.decode_bf_working_len());
 
@@ -297,7 +159,7 @@ impl LDPCCode {
         // Track how many bits we've fixed
         let mut bits_fixed = 0;
 
-        for iter in 0..ERASURE_MAX_ITERS {
+        for iter in 0..maxiters {
 
             // For each punctured bit
             for a in n..n+p {
@@ -362,10 +224,12 @@ impl LDPCCode {
             }
         }
 
+    */
         // If we got this far we have not succeeded
-        (false, ERASURE_MAX_ITERS)
+        (false, maxiters)
     }
 
+    /// TODO update these docs
     /// Bit flipping decoder.
     ///
     /// This algorithm is quick but only operates on hard information and consequently leaves a
@@ -394,75 +258,7 @@ impl LDPCCode {
     /// * `input.len()` must be exactly `self.n()/8`
     /// * `output.len()` must be exactly `self.output_len()`.
     /// * `working.len()` must be exactly `self.decode_bf_working_len()`.
-    pub fn decode_bf(&self, ci: &[u16], cs: &[u16], vi: Option<&[u16]>, vs: Option<&[u16]>,
-                     input: &[u8], output: &mut [u8], working: &mut [u8]) -> (bool, usize)
-    {
-        //assert_eq!(ci.len(), self.sparse_paritycheck_ci_len());
-        //assert_eq!(cs.len(), self.sparse_paritycheck_cs_len());
-        assert_eq!(input.len(), self.n()/8);
-        assert_eq!(output.len(), self.output_len());
-        assert_eq!(working.len(), self.decode_bf_working_len());
-
-        // Copy input to codeword space
-        output[..self.n()/8].copy_from_slice(input);
-
-        // For punctured codes we first have to try and decode the erased punctured bits
-        let erasure_iters = if self.punctured_bits() > 0 {
-            let vi = vi.expect("vi must be provided for punctured codes");
-            let vs = vs.expect("vs must be provided for punctured codes");
-            let (_, iters) = self.decode_erasures(ci, cs, vi, vs, output, working);
-            iters
-        } else { 0 };
-
-        // Rename working area
-        let violations = working;
-
-        for iter in 0..BF_MAX_ITERS {
-            // Clear violation counters
-            for v in &mut violations[..] { *v = 0 }
-
-            // For each parity check, work out the parity
-            for cs_ss in cs.windows(2) {
-                let (cs_start, cs_end) = (cs_ss[0] as usize, cs_ss[1] as usize);
-                let mut parity = 0;
-
-                // For each variable involved in this check, update the parity sum
-                for a in &ci[cs_start..cs_end] {
-                    let a = *a as usize;
-                    parity += (output[a/8] >> (7-(a%8))) & 1;
-                }
-
-                // If the check has odd parity, add one violation to each variable
-                // involved in the check
-                if parity & 1 == 1 {
-                    for a in &ci[cs_start..cs_end] {
-                        let a = *a as usize;
-                        violations[a] += 1;
-                    }
-                }
-            }
-
-            // Find the maximum number of violations
-            let max_violations = violations.iter().max().unwrap();
-
-            if *max_violations == 0 {
-                // If no violations occurred we have successfully decoded, yay
-                return (true, iter + erasure_iters);
-            } else {
-                // Otherwise flip all bits with the maximum number of violations
-                for (a, v) in violations.iter().enumerate() {
-                    if *v == *max_violations {
-                        output[a/8] ^= 1<<(7-(a%8));
-                    }
-                }
-            }
-        }
-
-        // If we make it here we have not succeeded.
-        (false, erasure_iters + BF_MAX_ITERS)
-    }
-
-    pub fn decode_bf_new(&self, input: &[u8], output: &mut [u8], working: &mut [u8]) -> (bool, usize)
+    pub fn decode_bf(&self, input: &[u8], output: &mut [u8], working: &mut [u8], maxiters: usize) -> (bool, usize)
     {
         assert_eq!(input.len(), self.n()/8);
         assert_eq!(output.len(), self.output_len());
@@ -472,7 +268,7 @@ impl LDPCCode {
         // top bit of each entry in working is parity check
         // remaining 7 bits is counter of violations
 
-        for iter in 0..BF_MAX_ITERS {
+        for iter in 0..maxiters {
             for v in &mut working[..] { *v = 0 }
 
             // Calculate the parity of each parity check
@@ -506,29 +302,58 @@ impl LDPCCode {
             }
         }
 
-        (false, BF_MAX_ITERS)
+        (false, maxiters)
     }
 
-    pub fn decode_mp_new(&self, llrs: &[i8], output: &mut [u8], working: &mut [i8]) -> (bool, usize) {
+    /// TODO update these docs
+    /// Message passing based min-sum decoder.
+    ///
+    /// This algorithm is slower, requires more memory, and ideally operates on soft information,
+    /// but it provides very close to optimal decoding. If you don't have soft information but do
+    /// have the channel BER, you can use `decode_hard_to_llrs_with_ber` to go from hard
+    /// information (bytes from a receiver) to soft information (LLRs). If you don't have that, you
+    /// can use `decode_hard_to_llrs` to generate arbitrary LLRs from the hard information.
+    ///
+    /// Requires:
+    ///
+    /// * `ci`, `cs`, `vi`, `vs` must all be initialised from from `init_sparse_paritycheck()`,
+    /// * `llrs` must be `n` long, with positive numbers more likely to be 0.
+    /// * `output` must be allocated to (n+p)/8 bytes, of which the first k/8 bytes will be set
+    ///   to the decoded message (and the rest to the parity bits of the complete codeword)
+    /// * `working` is the working area which must be provided and must have
+    ///   `decode_ms_working_len` elements, equal to 2*paritycheck_sum.
+    ///
+    /// Returns decoding success and the number of iterations run for.
+    ///
+    /// ## Panics
+    /// * `ci.len()` must be exactly `self.sparse_paritycheck_ci_len()`.
+    /// * `cs.len()` must be exactly `self.sparse_paritycheck_cs_len()`.
+    /// * `vi.len()` must be exactly `self.sparse_paritycheck_vi_len()`.
+    /// * `vs.len()` must be exactly `self.sparse_paritycheck_vs_len()`.
+    /// * `llrs.len()` must be exactly `self.n()`
+    /// * `output.len()` must be exactly `self.output_len()`.
+    /// * `working.len()` must be exactly `self.decode_ms_working_len()`.
+    pub fn decode_ms<T: DecodeFrom>(&self, llrs: &[T], output: &mut [u8], working: &mut [T], maxiters: usize) -> (bool, usize)
+    {
         assert_eq!(llrs.len(), self.n());
         assert_eq!(output.len(), self.output_len());
-        assert_eq!(working.len(), self.decode_mp_working_len());
+        assert_eq!(working.len(), self.decode_ms_working_len());
 
-        for w in &mut working[..] { *w = 0 }
-        let (u, v) = working.split_at_mut(self.decode_mp_working_len() / 2);
+        for w in &mut working[..] { *w = T::zero() }
+        let (u, v) = working.split_at_mut(self.decode_ms_working_len() / 2);
 
         let n = self.n();
         let k = self.k();
         let p = self.punctured_bits();
-        let mut va = vec![0i8; n + p];
-        let mut ui_min1 = vec![0i8; n + p - k];
-        let mut ui_min2 = vec![0i8; n + p - k];
+        let mut va = vec![T::zero(); n + p];
+        let mut ui_min1 = vec![T::zero(); n + p - k];
+        let mut ui_min2 = vec![T::zero(); n + p - k];
         let mut ui_sgns = vec![0u8; (n + p - k) / 8];
         let mut parities = vec![0u8; (n + p - k) / 8];
 
-        for iter in 0..MP_MAX_ITERS {
+        for iter in 0..maxiters {
             va[..llrs.len()].copy_from_slice(llrs);
-            for x in &mut va[llrs.len()..] { *x = 0 }
+            for x in &mut va[llrs.len()..] { *x = T::zero() }
 
             for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
                 if v[idx].abs() == ui_min1[check] {
@@ -539,7 +364,7 @@ impl LDPCCode {
                 if ui_sgns[check/8] >> (check%8) & 1 == 1 {
                     u[idx] = -u[idx];
                 }
-                if v[idx] < 0 {
+                if v[idx] < T::zero() {
                     u[idx] = -u[idx];
                 }
 
@@ -549,20 +374,20 @@ impl LDPCCode {
 
             for o in &mut output[..] { *o = 0 }
             for var in 0..(self.n() + self.punctured_bits()) {
-                if va[var] <= 0 {
+                if va[var] <= T::zero() {
                     output[var/8] |= 1 << (7 - (var%8));
                 }
             }
 
-            for x in &mut ui_min1[..] { *x = i8::MAX }
-            for x in &mut ui_min2[..] { *x = i8::MAX }
-            for x in &mut ui_sgns[..] { *x = 0  }
+            for x in &mut ui_min1[..] { *x = T::maxval() }
+            for x in &mut ui_min2[..] { *x = T::maxval() }
+            for x in &mut ui_sgns[..] { *x = 0 }
             for x in &mut parities[..] { *x = 0 }
             for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
                 // output messages to each parity check
                 let new_v_ai = va[var] - u[idx];
-                if v[idx] != 0 && (new_v_ai >= 0) != (v[idx] >= 0) {
-                    v[idx] = 0;
+                if v[idx] != T::zero() && (new_v_ai >= T::zero()) != (v[idx] >= T::zero()) {
+                    v[idx] = T::zero();
                 } else {
                     v[idx] = new_v_ai;
                 }
@@ -576,7 +401,7 @@ impl LDPCCode {
                 }
 
                 // accumulate signs
-                if v[idx] < 0 {
+                if v[idx] < T::zero() {
                     ui_sgns[check/8] ^= 1<<(check%8);
                 }
 
@@ -592,12 +417,12 @@ impl LDPCCode {
             }
         }
 
-        (false, MP_MAX_ITERS)
+        (false, maxiters)
     }
 
     /// Convert hard information into LLRs.
     ///
-    /// The min-sum decoding used in `decode_mp` is invariant to linear scaling
+    /// The min-sum decoding used in `decode_ms` is invariant to linear scaling
     /// in LLR, so it doesn't matter which value is picked so long as the sign
     /// is correct. This function just assigns -/+ 1.0 for 1/0 bits.
     ///
@@ -607,8 +432,8 @@ impl LDPCCode {
     /// * `input.len()` must be exactly `self.n()/8`
     /// * `llrs.len()` must be exactly `self.n()`
     pub fn hard_to_llrs(&self, input: &[u8], llrs: &mut [f32]) {
-        assert_eq!(input.len(), self.n()/8);
-        assert_eq!(llrs.len(), self.n());
+        assert_eq!(input.len(), self.n()/8, "input.len() != n/8");
+        assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
         let llr = -1.0f32;
         for (idx, byte) in input.iter().enumerate() {
             for i in 0..8 {
@@ -625,9 +450,10 @@ impl LDPCCode {
     /// * `input.len()` must be exactly `self.n()/8`
     /// * `llrs.len()` must be exactly `self.n()`
     pub fn llrs_to_hard(&self, llrs: &[f32], output: &mut [u8]) {
-        for o in &mut output[..] {
-            *o = 0;
-        }
+        assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
+        assert_eq!(output.len(), self.n()/8, "output.len() != n/8");
+
+        for o in &mut output[..] { *o = 0 }
 
         for (i, llr) in llrs.iter().enumerate() {
             if *llr < 0.0 {
@@ -657,9 +483,9 @@ mod tests {
     ];
 
     #[test]
-    fn test_decode_mp_working_len() {
+    fn test_decode_ms_working_len() {
         for (code, param) in CODES.iter().zip(PARAMS.iter()) {
-            assert_eq!(code.decode_mp_working_len(), param.decode_mp_working_len);
+            assert_eq!(code.decode_ms_working_len(), param.decode_ms_working_len);
         }
     }
 
@@ -732,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_bf_new_tc() {
+    fn test_decode_bf_tc() {
         let code = LDPCCode::TC256;
 
         // Make up some TX data
@@ -751,14 +577,14 @@ mod tests {
         let mut output = vec![0u8; code.output_len()];
 
         // Run decoder
-        let (success, _) = code.decode_bf_new(&rxcode, &mut output, &mut working);
+        let (success, _) = code.decode_bf(&rxcode, &mut output, &mut working, 50);
 
         assert!(success);
         assert_eq!(&txcode[..], &output[..txcode.len()]);
 
     }
     #[test]
-    fn test_decode_mp_new() {
+    fn test_decode_ms() {
         let code = LDPCCode::TM1280;
 
         // Make up a TX codeword
@@ -780,11 +606,11 @@ mod tests {
         //code.hard_to_llrs(&rxcode, &mut llrs);
 
         // Allocate working area and output area
-        let mut working = vec![0i8; code.decode_mp_working_len()];
+        let mut working = vec![0i8; code.decode_ms_working_len()];
         let mut decoded = vec![0u8; code.output_len()];
 
         // Run decoder
-        let (success, iters) = code.decode_mp_new(&llrs, &mut decoded, &mut working);
+        let (success, iters) = code.decode_ms(&llrs, &mut decoded, &mut working, 50);
 
         assert_eq!(&decoded[..8], &txcode[..8]);
         assert!(success);

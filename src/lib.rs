@@ -44,19 +44,12 @@
 //! let mut rxcode = txcode.clone();
 //! rxcode[0] ^= 0x55;
 //!
-//! // Allocate and initialise the data needed to run a decoder
-//! // (we only need ci and cs for this code and decoder, but
-//! //  normally you'd need vi and vs as well).
-//! let mut ci = vec![0; code.sparse_paritycheck_ci_len()];
-//! let mut cs = vec![0; code.sparse_paritycheck_cs_len()];
-//! code.init_sparse_paritycheck_checks(&mut ci, &mut cs);
-//!
 //! // Allocate some memory for the decoder's working area and output
 //! let mut working = vec![0u8; code.decode_bf_working_len()];
 //! let mut rxdata = vec![0u8; code.output_len()];
 //!
-//! // Decode
-//! code.decode_bf(&ci, &cs, None, None, &rxcode, &mut rxdata, &mut working);
+//! // Decode for at most 20 iterations
+//! code.decode_bf(&rxcode, &mut rxdata, &mut working, 20);
 //!
 //! // Check the errors got corrected
 //! assert_eq!(&rxdata[..8], &txdata[..8]);
@@ -191,7 +184,7 @@
 //!   This is maybe 1 or 2dB from optimal for decoding, but requires much less RAM and does still
 //!   correct errors. It's only really useful on something without a hardware floating point unit
 //!   or with very little memory available.
-//! * The high-performance decoder, `decode_mp`, uses a modified min-sum decoding algorithm to
+//! * The high-performance decoder, `decode_ms`, uses a modified min-sum decoding algorithm to
 //!   perform near-optimal decoding albeit with much higher memory overhead.
 //!
 //! The required memory (in bytes) to decode with each code is:
