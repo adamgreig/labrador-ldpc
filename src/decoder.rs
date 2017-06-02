@@ -117,16 +117,14 @@ impl LDPCCode {
     /// Used to preprocess punctured codes before attempting bit-flipping decoding,
     /// as the bit-flipping algorithm cannot handle erasures.
     ///
-    /// The basic idea is:
-    ///
-    /// * For each erased bit `a`:
-    ///     * For each check `i` that `a` is associated with:
-    ///         * If `a` is the only erasure that `i` is associated with,
-    ///           then compute the parity of `i`, and cast a vote for the
-    ///           value of `a` that would give even parity
-    ///         * Otherwise ignore `i`
-    ///     * If there is a majority vote, set `a` to the winning value, and mark
-    ///       it not longer erased. Otherwise, leave it erased.
+    /// The algorithm is:
+    ///     * We compute the parity of each check over all non-erased bits
+    ///     * We count how many erased bits are connected to each check (0, 1, or "more than 1")
+    ///     * Then each parity check with exactly one erased variable casts a vote for
+    ///       that variable, +1 if check parity is 1, otherwise -1
+    ///     * Each variable that receives a majority vote (i.e. not equal 0) is set to that
+    ///       vote and marked decoded
+    ///     * Iterate until all variables are decoded or we reach the iteration limit
     ///
     /// This is based on the paper:
     /// Novel multi-Gbps bit-flipping decoders for punctured LDPC codes,
@@ -136,99 +134,87 @@ impl LDPCCode {
     ///   set to the received hard information, and the punctured bits at the end will be updated.
     /// * `working` must be (n+p) bytes long (`self.decode_bf_working_len()`).
     ///
-    /// Returns `(success, number of iterations run)`. Note that `success` false only indicates
-    /// that not every punctured bit was correctly recovered; many may have been successful.
-    //fn decode_erasures(&self, _codeword: &mut [u8], _working: &mut [u8], maxiters: usize) -> (bool, usize)
-    //{
-        /*
+    /// Returns `(success, number of iterations run)`. Success only indicates that every punctured
+    /// bit got a majority vote; but they might still be wrong; likewise failure means not every
+    /// bit got a vote but many may still have been determined correctly.
+    fn decode_erasures(&self, codeword: &mut [u8], working: &mut [u8], maxiters: usize)
+        -> (bool, usize)
+    {
         assert_eq!(codeword.len(), self.output_len());
         assert_eq!(working.len(), self.decode_bf_working_len());
 
         let n = self.n();
         let p = self.punctured_bits();
 
-        // Rename working area
-        let erasures = working;
+        // Working area:
+        // * The top bit 0x80 for byte 'i' is the parity bit for check 'i'.
+        // * The second and third top bits 0x60 for byte 'i' indicate the number of erased
+        //   variables connected to check 'i':
+        //   00 for no erasures, 01 for a single erasure, 11 for more than one erasure
+        // * The fourth top bit 0x10 for byte 'a' indicates whether variable 'a' is erased
+        // * The lowest four bits 0x0F for byte 'a' indicate the votes received for variable 'a',
+        //   starting at 8 for 0 votes and being incremented and decremented from there.
 
-        // Initialise erasures
-        for e in &mut erasures[..n] { *e = 0; }
-        for e in &mut erasures[n..] { *e = 1; }
+        // Initialse working area: mark all punctured bits as erased
+        for w in &mut working[..n] { *w = 0x00 }
+        for w in &mut working[n..] { *w = 0x10 }
 
-        // Initialise punctured part of output
-        for c in &mut codeword[n/8..] { *c = 0; }
+        // Also write all the punctured bits in the codeword to zero
+        for c in &mut codeword[n/8..] { *c = 0x00 }
 
-        // Track how many bits we've fixed
+        // Keep track of how many bits we've fixed
         let mut bits_fixed = 0;
 
         for iter in 0..maxiters {
+            // Initialise parity and erasure counts to zero, reset votes, preserve erasure bit
+            for w in &mut working[..] { *w = (*w & 0x10) | 0x08 }
 
-            // For each punctured bit
-            for a in n..n+p {
-
-                // Skip bits we have since fixed
-                if erasures[a] == 0 {
-                    continue;
-                }
-
-                // Track votes for 0 (negative) or 1 (positive)
-                let mut votes = 0;
-
-                // For each check this bit is associated with
-                for i in &vi[vs[a] as usize .. vs[a+1] as usize] {
-                    let i = *i as usize;
-                    let mut parity = 0;
-
-                    // See what the check parity is, and quit without voting if this check has
-                    // any other erasures
-                    let mut only_one_erasure = true;
-                    for b in &ci[cs[i] as usize .. cs[i+1] as usize] {
-                        let b = *b as usize;
-
-                        // Skip if this is the bit we're currently considering
-                        if a == b {
-                            continue;
-                        }
-
-                        // If we see another erasure, stop
-                        if erasures[b] == 1 {
-                            only_one_erasure = false;
-                            break;
-                        }
-
-                        // Otherwise add up parity for this check
-                        parity += (codeword[b/8] >> (7-(b%8))) & 1;
+            // Compute check parity and erasure count
+            for (check, var) in self.iter_paritychecks() {
+                if working[var] & 0x10 == 0x10 {
+                    // If var is erased, update check erasure count
+                    match working[check] & 0x60 {
+                        0x00 => working[check] |= 0x20,
+                        0x20 => working[check] |= 0x40,
+                        _    => (),
                     }
-
-                    // Cast a vote if we didn't see any other erasures
-                    if only_one_erasure {
-                        votes += if parity & 1 == 1 { 1 } else { -1 };
-                    }
+                } else if codeword[var/8] >> (7-(var%8)) & 1 == 1 {
+                    // If var is not erased and this codeword bit is set, update check parity
+                    working[check] ^= 0x80;
                 }
+            }
 
-                // If we have a majority vote one way or the other, great!
-                // Set ourselves to the majority vote value and clear our erasure status.
-                if votes != 0 {
-                    erasures[a] = 0;
-                    bits_fixed += 1;
-
-                    if votes > 0 {
-                        codeword[a/8] |=   1<<(7-(a%8));
+            // Now accumulate votes for each erased variable
+            for (check, var) in self.iter_paritychecks() {
+                // If this variable is erased and this check has only one vote
+                if working[var] & 0x10 == 0x10 && working[check] & 0x60 == 0x20 {
+                    // Vote +1 if our parity is currently 1, -1 otherwise
+                    if working[check] & 0x80 == 0x80 {
+                        working[var] += 1;
                     } else {
-                        codeword[a/8] &= !(1<<(7-(a%8)));
+                        working[var] -= 1;
                     }
                 }
+            }
 
-                if bits_fixed == p {
-                    return (true, iter);
+            // Finally set all bits that are erased and have a majority positive vote
+            for check in 0..(n+p) {
+                if working[check] & 0x10 == 0x10 && working[check] & 0x0F > 0x08 {
+                    codeword[check/8] |= 1<<(7-(check%8));
+                    working[check] &= !0x10;
+                    bits_fixed += 1;
                 }
+            }
 
+            if bits_fixed == p {
+                // Hurray we're done
+                return (true, iter)
             }
         }
 
-    */
-        // If we got this far we have not succeeded
-        //(false, maxiters)
-    //}
+        // If we finished the iteration loop then we did not succeed.
+        (false, maxiters)
+    }
 
     /// Bit flipping decoder.
     ///
@@ -263,6 +249,14 @@ impl LDPCCode {
 
         output[..self.n()/8].copy_from_slice(input);
 
+        // For punctured codes we must first try and fix all the punctured bits.
+        // We run them through an erasure decoding algorithm and record how many iterations
+        // it took (so we can return the total).
+        let erasure_iters = if self.punctured_bits() > 0 {
+            let (_, iters) = self.decode_erasures(output, working, maxiters);
+            iters
+        } else { 0 };
+
         // Working area: we use the top bit of the first k bytes to store that parity check,
         // and the remaining 7 bits of the first n+p bytes to store violation count for that var.
 
@@ -291,7 +285,7 @@ impl LDPCCode {
             }
 
             if max_violations == 0 {
-                return (true, iter);
+                return (true, iter + erasure_iters);
             } else {
                 // Flip all the bits that have the maximum number of violations
                 for (var, violations) in working.iter().enumerate() {
@@ -302,7 +296,7 @@ impl LDPCCode {
             }
         }
 
-        (false, maxiters)
+        (false, maxiters + erasure_iters)
     }
 
     /// Message passing based min-sum decoder.
