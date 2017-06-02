@@ -232,7 +232,7 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
 /// of an edge on the parity check matrix, where `check` is the row
 /// and `variable` is the column.
 ///
-/// ParityIter is obtained from `LDPCCode::iter_paritychecks()`.
+/// `ParityIter` is obtained from `LDPCCode::iter_paritychecks()`.
 pub struct ParityIter {
     phi: &'static [[u16; 26]; 4],
     prototype: &'static [[[u8; 11]; 4]; 3],
@@ -256,6 +256,7 @@ impl Iterator for ParityIter {
     /// This function really really wants to be inlined for performance. It does almost no
     /// computation but returns thousands of times, so the overhead of a function call
     /// completely dominates its runtime if not inlined.
+    #[cfg_attr(feature="cargo-clippy", allow(inline_always))]
     #[inline(always)]
     fn next(&mut self) -> Option<(usize, usize)> {
         use self::compact_parity_checks::{HI, HP, THETA_K};

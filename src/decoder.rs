@@ -198,10 +198,10 @@ impl LDPCCode {
             }
 
             // Finally set all bits that are erased and have a majority positive vote
-            for check in 0..(n+p) {
-                if working[check] & 0x10 == 0x10 && working[check] & 0x0F > 0x08 {
+            for (check, working) in working[0..(n+p)].iter_mut().enumerate() {
+                if *working & 0x10 == 0x10 && *working & 0x0F > 0x08 {
                     codeword[check/8] |= 1<<(7-(check%8));
-                    working[check] &= !0x10;
+                    *working &= !0x10;
                     bits_fixed += 1;
                 }
             }
@@ -407,8 +407,8 @@ impl LDPCCode {
                 // Hard decode marginals into the output
                 let output = parities;
                 for o in &mut output[..] { *o = 0 }
-                for var in 0..(n + p) {
-                    if va[var] <= T::zero() {
+                for (var, &va) in va[0..(n+p)].iter().enumerate() {
+                    if va <= T::zero() {
                         output[var/8] |= 1 << (7 - (var%8));
                     }
                 }
@@ -419,8 +419,8 @@ impl LDPCCode {
         // If we failed to find a codeword, at least hard decode the marginals into the output
         let output = parities;
         for o in &mut output[..] { *o = 0 }
-        for var in 0..(n + p) {
-            if va[var] <= T::zero() {
+        for (var, &va) in va[0..(n+p)].iter().enumerate() {
+            if va <= T::zero() {
                 output[var/8] |= 1 << (7 - (var%8));
             }
         }
