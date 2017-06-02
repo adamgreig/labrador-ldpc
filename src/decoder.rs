@@ -93,14 +93,14 @@ impl LDPCCode {
 
     /// Get the length of [T] required for the working area of `decode_ms`.
     ///
-    /// Equal to 2 * paritycheck_sum + 3n + 3p - 2k.
+    /// Equal to 2 * paritycheck_sum + 3*n + 3*punctured_bits - 2*k.
     pub fn decode_ms_working_len(&self) -> usize {
         (2 * self.paritycheck_sum() as usize + 3*self.n() + 3*self.punctured_bits() - 2*self.k())
     }
 
     /// Get the length of [u8] required for the working_u8 area of `decode_ms`.
     ///
-    /// Equal to (n+p-k)/8.
+    /// Equal to (n + punctured_bits - k)/8.
     pub fn decode_ms_working_u8_len(&self) -> usize {
         (self.n() + self.punctured_bits() - self.k()) / 8
     }
@@ -197,11 +197,13 @@ impl LDPCCode {
                 }
             }
 
-            // Finally set all bits that are erased and have a majority positive vote
-            for (check, working) in working[0..(n+p)].iter_mut().enumerate() {
-                if *working & 0x10 == 0x10 && *working & 0x0F > 0x08 {
-                    codeword[check/8] |= 1<<(7-(check%8));
-                    *working &= !0x10;
+            // Finally fix all bits that are erased and have a majority vote
+            for (var, working) in working[0..(n+p)].iter_mut().enumerate() {
+                if *working & 0x10 == 0x10 {
+                    if *working & 0x0F > 0x08 {
+                        codeword[var/8] |= 1<<(7-(var%8));
+                        *working &= !0x10;
+                    }
                     bits_fixed += 1;
                 }
             }
@@ -491,11 +493,10 @@ mod tests {
 
     #[test]
     fn test_decode_ms_working_len() {
-        // XXX
-        //for (code, param) in CODES.iter().zip(PARAMS.iter()) {
-            //assert_eq!(code.decode_ms_working_len(), param.decode_ms_working_len);
-            //assert_eq!(code.decode_ms_working_u8_len(), param.decode_ms_working_u8_len);
-        //}
+        for (code, param) in CODES.iter().zip(PARAMS.iter()) {
+            assert_eq!(code.decode_ms_working_len(), param.decode_ms_working_len);
+            assert_eq!(code.decode_ms_working_u8_len(), param.decode_ms_working_u8_len);
+        }
     }
 
     #[test]
@@ -567,62 +568,96 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_bf_tc() {
-        let code = LDPCCode::TC256;
+    fn test_decode_erasures() {
+        for code in &CODES {
+            // Only bother testing codes that actually have punctured bits
+            if code.punctured_bits() == 0 {
+                continue;
+            }
 
-        // Make up some TX data
-        let txdata: Vec<u8> = (0..16).collect();
-        let mut txcode = vec![0u8; code.n()/8];
-        code.copy_encode(&txdata, &mut txcode);
+            // Encode a codeword
+            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n()/8];
+            code.copy_encode(&txdata, &mut txcode);
 
-        // Copy to rx
-        let mut rxcode = txcode.clone();
+            // Allocate working area
+            let mut working = vec![0u8; code.decode_bf_working_len()];
+            let mut output = vec![0u8; code.output_len()];
 
-        // Corrupt some bits
-        rxcode[0] = 0xFF;
+            // Copy TX codeword into output manually (normally done by `decode_bf()`).
+            output[..txcode.len()].copy_from_slice(&txcode);
 
-        // Allocate working area and output area
-        let mut working = vec![0u8; code.decode_bf_working_len()];
-        let mut output = vec![0u8; code.output_len()];
+            // Run erasure decoder
+            let (success, _) = code.decode_erasures(&mut output, &mut working, 50);
 
-        // Run decoder
-        let (success, _) = code.decode_bf(&rxcode, &mut output, &mut working, 50);
+            assert!(success);
 
-        assert!(success);
-        assert_eq!(&txcode[..], &output[..txcode.len()]);
+            // Now compare the result against the min-sum decoder which should
+            // also correctly decode the punctured parity bits
+            let mut llrs = vec![0i8; code.n()];
+            let mut working_ms = vec![0i8; code.decode_ms_working_len()];
+            let mut working_u8_ms = vec![0u8; code.decode_ms_working_u8_len()];
+            let mut output_ms = vec![0u8; code.output_len()];
+            code.hard_to_llrs(&txcode, &mut llrs);
+            let (success, _) = code.decode_ms(&llrs, &mut output_ms, &mut working_ms,
+                                              &mut working_u8_ms, 50);
+
+            assert!(success);
+            assert_eq!(output, output_ms);
+        }
+    }
+
+    #[test]
+    fn test_decode_bf() {
+        for code in &CODES {
+            // Make up some TX data
+            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n()/8];
+            code.copy_encode(&txdata, &mut txcode);
+
+            // Copy it and corrupt some bits
+            let mut rxcode = txcode.clone();
+            rxcode[0] ^= 1<<7 | 1<<5 | 1<<3;
+
+            // Allocate working area and output area
+            let mut working = vec![0u8; code.decode_bf_working_len()];
+            let mut output = vec![0u8; code.output_len()];
+
+            // Run decoder
+            let (success, _) = code.decode_bf(&rxcode, &mut output, &mut working, 50);
+
+            assert!(success);
+            assert_eq!(&txcode[..], &output[..txcode.len()]);
+        }
 
     }
     #[test]
     fn test_decode_ms() {
-        let code = LDPCCode::TM1280;
+        for code in &CODES {
+            // Make up a TX codeword
+            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n()/8];
+            code.copy_encode(&txdata, &mut txcode);
 
-        // Make up a TX codeword
-        let txdata: Vec<u8> = (0..code.k()/8).map(|i| !(i as u8)).collect();
-        let mut txcode = vec![0u8; code.n()/8];
-        code.copy_encode(&txdata, &mut txcode);
+            // Copy it and corrupt some bits
+            let mut rxcode = txcode.clone();
+            rxcode[0] ^= 1<<7 | 1<<5 | 1<<3;
 
-        // Copy it and corrupt the first bit
-        let mut rxcode = txcode.clone();
-        rxcode[0] ^= 1<<7;
+            // Convert the hard data to LLRs
+            let mut llrs = vec![0i8; code.n()];
+            code.hard_to_llrs(&rxcode, &mut llrs);
 
-        // Convert the hard data to LLRs
-        let mut llrs = vec![0i8; code.n()];
-        for (idx, byte) in rxcode.iter().enumerate() {
-            for i in 0..8 {
-                llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { -1i8 } else { 1i8 };
-            }
+            // Allocate working area and output area
+            let mut working = vec![0i8; code.decode_ms_working_len()];
+            let mut working_u8 = vec![0u8; code.output_len() - code.k()/8];
+            let mut output = vec![0u8; code.output_len()];
+
+            // Run decoder
+            let (success, _) = code.decode_ms(&llrs, &mut output, &mut working,
+                                              &mut working_u8, 50);
+
+            assert!(success);
+            assert_eq!(&txcode[..], &output[..txcode.len()]);
         }
-        //code.hard_to_llrs(&rxcode, &mut llrs);
-
-        // Allocate working area and output area
-        let mut working = vec![0i8; code.decode_ms_working_len()];
-        let mut working_u8 = vec![0u8; code.output_len() - code.k()/8];
-        let mut decoded = vec![0u8; code.output_len()];
-
-        // Run decoder
-        let (success, _) = code.decode_ms(&llrs, &mut decoded, &mut working, &mut working_u8, 50);
-
-        assert_eq!(&decoded[..8], &txcode[..8]);
-        assert!(success);
     }
 }

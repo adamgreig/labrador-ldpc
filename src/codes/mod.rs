@@ -92,8 +92,12 @@ pub struct CodeParams {
     pub decode_bf_working_len: usize,
 
     /// Length of the working area required for the message-passing decoder.
-    /// Equal to 2*paritycheck_sum.
+    /// Equal to 2 * paritycheck_sum + 3*n + 3*p - 2*k
     pub decode_ms_working_len: usize,
+
+    /// Length of the u8 working area required for the message-passing decoder.
+    /// Equal to (n + punctured_bits - k)/8.
+    pub decode_ms_working_u8_len: usize,
 
     /// Length of output required from any decoder.
     /// Equal to (n+punctured_bits)/8.
@@ -110,7 +114,8 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 512,
 
     decode_bf_working_len: 128 + 0,
-    decode_ms_working_len: 2 * 512,
+    decode_ms_working_len: 2*512 + 3*128 + 3*0 - 2*64,
+    decode_ms_working_u8_len: (128 + 0 - 64)/8,
     output_len: 128/8,
 };
 
@@ -124,7 +129,8 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 1024,
 
     decode_bf_working_len: 256 + 0,
-    decode_ms_working_len: 2 * 1024,
+    decode_ms_working_len: 2*1024 + 3*256 + 3*0 - 2*128,
+    decode_ms_working_u8_len: (256 + 0 - 128)/8,
     output_len: 256/8,
 };
 
@@ -138,7 +144,8 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 2048,
 
     decode_bf_working_len: 512 + 0,
-    decode_ms_working_len: 2 * 2048,
+    decode_ms_working_len: 2*2048 + 3*512 + 3*0 - 2*256,
+    decode_ms_working_u8_len: (512 + 0 - 256)/8,
     output_len: 512/8,
 };
 
@@ -152,7 +159,8 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 4992,
 
     decode_bf_working_len: 1280 + 128,
-    decode_ms_working_len: 2 * 4992,
+    decode_ms_working_len: 2*4992 + 3*1280 + 3*128 - 2*1024,
+    decode_ms_working_u8_len: (1280 + 128 - 1024)/8,
     output_len: (1280 + 128)/8,
 };
 
@@ -166,7 +174,8 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 5888,
 
     decode_bf_working_len: 1536 + 256,
-    decode_ms_working_len: 2 * 5888,
+    decode_ms_working_len: 2*5888 + 3*1536 + 3*256 - 2*1024,
+    decode_ms_working_u8_len: (1536 + 256 - 1024)/8,
     output_len: (1536 + 256)/8,
 };
 
@@ -180,7 +189,8 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 7680,
 
     decode_bf_working_len: 2048 + 512,
-    decode_ms_working_len: 2 * 7680,
+    decode_ms_working_len: 2*7680 + 3*2048 + 3*512 - 2*1024,
+    decode_ms_working_u8_len: (2048 + 512 - 1024)/8,
     output_len: (2048 + 512)/8,
 };
 
@@ -194,7 +204,8 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 19968,
 
     decode_bf_working_len: 5120 + 512,
-    decode_ms_working_len: 2 * 19968,
+    decode_ms_working_len: 2*19968 + 3*5120 + 3*512 - 2*4096,
+    decode_ms_working_u8_len: (5120 + 512 - 4096)/8,
     output_len: (5120 + 512)/8,
 };
 
@@ -208,7 +219,8 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 23552,
 
     decode_bf_working_len: 6144 + 1024,
-    decode_ms_working_len: 2 * 23552,
+    decode_ms_working_len: 2*23552 + 3*6144 + 3*1024 - 2*4096,
+    decode_ms_working_u8_len: (6144 + 1024 - 4096)/8,
     output_len: (6144 + 1024)/8,
 };
 
@@ -222,7 +234,8 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     paritycheck_sum: 30720,
 
     decode_bf_working_len: 8192 + 2048,
-    decode_ms_working_len: 2 * 30720,
+    decode_ms_working_len: 2*30720 + 3*8192 + 3*2048 - 2*4096,
+    decode_ms_working_u8_len: (8192 + 2048 - 4096)/8,
     output_len: (8192 + 2048)/8,
 };
 
