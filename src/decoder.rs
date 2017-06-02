@@ -361,7 +361,10 @@ impl LDPCCode {
             va[..llrs.len()].copy_from_slice(llrs);
             for x in &mut va[llrs.len()..] { *x = T::zero() }
 
-            for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
+            // You'd think .enumerate() would be sensible, but actually it prevents
+            // inlining the iterator's next() method, which leads to a big performance hit.
+            let mut idx = 0;
+            for (check, var) in self.iter_paritychecks() {
                 // Work out messages to this variable
                 if v[idx].abs() == ui_min1[check] {
                     u[idx] = ui_min2[check];
@@ -377,13 +380,17 @@ impl LDPCCode {
 
                 // Accumulate incoming messages to each variable
                 va[var] = va[var].saturating_add(u[idx]);
+
+                // DIY enumerate
+                idx += 1;
             }
 
             for x in &mut ui_min1[..] { *x = T::maxval() }
             for x in &mut ui_min2[..] { *x = T::maxval() }
             for x in &mut ui_sgns[..] { *x = 0 }
             for x in &mut parities[..] { *x = 0 }
-            for (idx, (check, var)) in self.iter_paritychecks().enumerate() {
+            idx = 0;
+            for (check, var) in self.iter_paritychecks() {
                 // Work out messages to this parity check
                 let new_v_ai = va[var] - u[idx];
                 if v[idx] != T::zero() && (new_v_ai >= T::zero()) != (v[idx] >= T::zero()) {
@@ -409,6 +416,8 @@ impl LDPCCode {
                 if va[var] <= T::zero() {
                     parities[check/8] ^= 1<<(check%8);
                 }
+
+                idx += 1;
             }
 
             // Check parities. If none are 1 then we have a valid codeword.
