@@ -49,6 +49,8 @@ pub trait DecodeFrom:
     fn maxval()         -> Self;
     /// Absolute value of self
     fn abs(&self)       -> Self;
+    /// Saturating add
+    fn saturating_add(&self, other: Self) -> Self;
 }
 
 impl DecodeFrom for i8 {
@@ -56,30 +58,35 @@ impl DecodeFrom for i8 {
     #[inline] fn zero()     -> i8 { 0 }
     #[inline] fn maxval()   -> i8 { i8::MAX }
     #[inline] fn abs(&self) -> i8 { i8::abs(*self) }
+    #[inline] fn saturating_add(&self, other: Self) -> Self { i8::saturating_add(*self, other) }
 }
 impl DecodeFrom for i16 {
     #[inline] fn one()      -> i16 { 1 }
     #[inline] fn zero()     -> i16 { 0 }
     #[inline] fn maxval()   -> i16 { i16::MAX }
     #[inline] fn abs(&self) -> i16 { i16::abs(*self) }
+    #[inline] fn saturating_add(&self, other: Self) -> Self { i16::saturating_add(*self, other) }
 }
 impl DecodeFrom for i32 {
     #[inline] fn one()      -> i32 { 1 }
     #[inline] fn zero()     -> i32 { 0 }
     #[inline] fn maxval()   -> i32 { i32::MAX }
     #[inline] fn abs(&self) -> i32 { i32::abs(*self) }
+    #[inline] fn saturating_add(&self, other: Self) -> Self { i32::saturating_add(*self, other) }
 }
 impl DecodeFrom for f32 {
     #[inline] fn one()      -> f32 { 1.0 }
     #[inline] fn zero()     -> f32 { 0.0 }
     #[inline] fn maxval()   -> f32 { f32::MAX }
     #[inline] fn abs(&self) -> f32 { fabsf(*self) }
+    #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
 }
 impl DecodeFrom for f64 {
     #[inline] fn one()      -> f64 { 1.0 }
     #[inline] fn zero()     -> f64 { 0.0 }
     #[inline] fn maxval()   -> f64 { f64::MAX }
     #[inline] fn abs(&self) -> f64 { fabs(*self) }
+    #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
 }
 
 impl LDPCCode {
@@ -369,7 +376,7 @@ impl LDPCCode {
                 }
 
                 // Accumulate incoming messages to each variable
-                va[var] += u[idx];
+                va[var] = va[var].saturating_add(u[idx]);
             }
 
             for x in &mut ui_min1[..] { *x = T::maxval() }
