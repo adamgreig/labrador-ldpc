@@ -16,12 +16,6 @@
 //! allocated block of memory for them to use. Check individual method documentation for further
 //! details.
 //!
-//! Please note this library is still in version 0 and so the API is likely to change.
-//! In particular the current interface for passing initialised values (`cs`, etc) into decoders is
-//! not ergonomic and is likely to change. On the other hand the codes themselves will not change
-//! (although new ones may be added) and so newer versions of the library will still be able to
-//! communicate with older versions indefinitely.
-//!
 //! ## Example
 //!
 //! ```
@@ -64,7 +58,8 @@
 //!
 //! Several codes are available in a range of lengths and rates. Current codes come from two
 //! sets of CCSDS recommendations, their TC (telecommand) short-length low-rate codes, and their
-//! TM (telemetry) higher-length various-rates codes.
+//! TM (telemetry) higher-length various-rates codes. These are all published and standardised
+//! codes which have good performance.
 //!
 //! The TC codes are available in rate r=1/2 and dimensions k=128, k=256, and k=512.
 //! They are the same codes defined in CCSDS document 231.1-O-1 and subsequent revisions (although
@@ -106,25 +101,11 @@
 //! These are the counterpart to the generator matrices of the previous section. They are used by
 //! the decoders to work out which bits are wrong and need to be changed. When fully expanded,
 //! they are a large matrix with n-k rows (one per parity check) of n columns (one per input data
-//! bit, or variable). We can store them in an extremely compact form due to the way these specific
-//! codes have been constructed, but they must be expanded before use.
+//! bit, or variable). We can store and use them in an extremely compact form due to the way these
+//! specific codes have been constructed.
 //!
 //! The constants are in `codes.compact_parity_checks` and reflect the construction defined
-//! in the CCSDS documents. They can be expanded into the full parity matrix using the
-//! `LDPCCode.init_paritycheck()` method, but this isn't actually needed by the decoders.
-//!
-//! Because the parity check matrices are sparse, it is much more efficient to store them as arrays
-//! of the indices of non-zero entries. For each check (row), we store the column indices that are
-//! non-zero in the array `ci` (*c*heck *i*ndex), and we store indices into `ci` in the array `cs`
-//! (*c*heck *s*tarts). In other words, for check 100, the relevant variables are stored in
-//! `ci[cs[100]..cs[101]]`. We then do the same from the other direction, storing the non-zero rows
-//! for each variable in the `vi` and `vs` arrays. These arrays are initialised using the
-//! `LDPCCode.init_sparse_paritycheck()` method, or you can initialise just the `ci` and `cs`
-//! arrays using `LDPCCode.init_sparse_paritycheck_checks()` (which is useful for the `bf` decoder
-//! with the `TC` codes, where you don't need `vi` or `vs`).
-//!
-//! It would be possible to write a decoder that directly accessed the parity constants, removing
-//! the need for any expansion into RAM, but this doesn't exist yet.
+//! in the CCSDS documents.
 //!
 //! ## Encoders
 //!
@@ -139,7 +120,8 @@
 //! which must be `n` bits long exactly. You can pass this as slices of `u8`, `u32`, or `u64`. In
 //! general the larger types will encode up to three times faster, so it's usually worth using
 //! them. They are interpreted as containing your data in little-endian, so you can directly
-//! cast between the `&[u8]` and larger interpretations.
+//! cast between the `&[u8]` and larger interpretations on all little-endian systems (which is to
+//! say, most systems).
 //!
 //! The encode methods always return an `&mut [u8]` view on the codeword memory, which you
 //! can use if you need this type for further use (such as transmission out of a radio), or if you
@@ -181,68 +163,59 @@
 //! There are two decoders available:
 //!
 //! * The low-memory decoder, `decode_bf`, uses a bit flipping algorithm with hard information.
-//!   This is maybe 1 or 2dB from optimal for decoding, but requires much less RAM and does still
-//!   correct errors. It's only really useful on something without a hardware floating point unit
-//!   or with very little memory available.
-//! * The high-performance decoder, `decode_ms`, uses a modified min-sum decoding algorithm to
-//!   perform near-optimal decoding albeit with much higher memory overhead.
+//!   This is maybe 1 or 2dB from optimal for decoding, but requires much less RAM and is usually
+//!   a few times faster. It's only really useful on something very slow or with very little memory
+//!   available.
+//! * The high-performance decoder, `decode_ms`, uses a modified min-sum decoding algorithm with
+//!   soft information to perform near-optimal decoding albeit slower and with much higher memory
+//!   overhead.  This decoder can operate on a variety of types for the soft information, with
+//!   corresponding differences in the memory overhead.
 //!
 //! The required memory (in bytes) to decode with each code is:
 //!
 //! Code   | Hard input  | Soft input  |   Output | Parity const | `bf` overhead | `mp` overhead
-//! -------|-------------|-------------|----------|--------------|---------------|--------------
+//! -------|-------------|-------------|----------|--------------|---------------|---------------
 //!        | (`bf`, RAM) | (`mp`, RAM) | (RAM)    | (text)       | (RAM)         | (RAM)
-//!        | =n/8        | =n*4        | =(n+p)/8 |              |               |
-//! TC128  |          16 |         512 |       16 |           32 |          1282 |         6532
-//! TC256  |          32 |        1024 |       32 |           32 |          2562 |        13060
-//! TC512  |          64 |        2048 |       64 |           32 |          5122 |        26116
-//! TM1280 |         160 |        5120 |      176 |          369 |         24964 |        63492
-//! TM1536 |         192 |        6144 |      224 |          324 |         30468 |        75780
-//! TM2048 |         256 |        8192 |      320 |          279 |         41476 |       100356
-//! TM5120 |         640 |       20480 |      704 |          369 |         99844 |       253956
-//! TM6144 |         768 |       24576 |      896 |          324 |        121860 |       303108
-//! TM8192 |        1024 |       32768 |     1280 |          279 |        165892 |       401412
+//!        | =n/8        | =n*T        | =(n+p)/8 |              |               |
+//! TC128  |          16 |        128T |       16 |          132 |           128 | 1280T    +   8
+//! TC256  |          32 |        256T |       32 |          132 |           256 | 2560T    +  16
+//! TC512  |          64 |        512T |       64 |          132 |           512 | 5120T    +  32
+//! TM1280 |         160 |       1280T |      176 |          366 |          1408 | 12160T   +  48
+//! TM1536 |         192 |       1536T |      224 |          366 |          1792 | 15104T   +  96
+//! TM2048 |         256 |       2048T |      320 |          366 |          2560 | 20992T   + 192
+//! TM5120 |         640 |       5120T |      704 |          366 |          5632 | 48640T   + 192
+//! TM6144 |         768 |       6144T |      896 |          366 |          7168 | 60416T   + 384
+//! TM8192 |        1024 |       8192T |     1280 |          366 |         10240 | 83968T   + 768
 //!
-//! The overhead column gives the combination of the required expanded parity constants (`ci`,
-//! `cs`, `vi`, and `vs`), and the required working area for that decoder. The `bf` decoder with
-//! the `TC` codes only requires the `ci` and `cs` parity data, giving the smallest memory
-//! overhead.
+//! `T` reflects the size of the type for your soft information: for `i8` this is 1, for `i16` 2,
+//! for `i32` and `f32` it's 4, and for `f64` it is 8. You should use a type commensurate with
+//! the quality of your soft information; usually `i16` would suffice for instance.
 //!
 //! Both decoders require the same output storage and parity constants. The `bf` decoder takes
 //! smaller hard inputs and has a much smaller working area, while the `mp` decoder requires
-//! soft inputs (one f32 per input bit) and uses soft information internally, requiring a larger
-//! working area.
+//! soft inputs and uses soft information internally, requiring a larger working area.
 //!
 //! The required sizes are available both at compile-time in the `CodeParams` consts, and at
-//! runtime with methods on `LDPCCode` such as `sparse_paritycheck_cs_len()`. You can therefore
+//! runtime with methods on `LDPCCode` such as `decode_ms_working_len()`. You can therefore
 //! allocate the required memory either statically or dynamically at runtime.
 //!
 //! Please see the individual decoder methods for more details on their requirements.
 //!
 //! ### Bit Flipping Decoder
-//! This decoder is based on the original Gallager decoder. It is not very optimal but is very
-//! fast. The idea is to see which bits are connected to the highest number of parity checks
-//! that are not currently satisfied, and flip those bits, and iterate until things get better.
+//! This decoder is based on the original Gallagher decoder. It is not very optimal but is fast.
+//! The idea is to see which bits are connected to the highest number of parity checks that are not
+//! currently satisfied, and flip those bits, and iterate until things get better.
 //! However, this routine cannot correct erasures (it only knows about bit flips). All of the TM
-//! codes are *punctured*, which means some parity bits are not transmitted and so are unknown
-//! at the receiver. We use a separate algorithm to decode the erasures first, based on a paper
-//! by Archonta, Kanistras and Paliouras, doi:10.1109/MOCAST.2016.7495161.
+//! codes are *punctured*, which means some parity bits are not transmitted and so are unknown at
+//! the receiver. We use a separate algorithm to decode the erasures first, based on a paper by
+//! Archonta, Kanistras and Paliouras, doi:10.1109/MOCAST.2016.7495161.
 //!
 //! ### Message Passing Decoder
 //! This is a modified min-sum decoder that computes the probability of each bit being set given
 //! the other bits connected to it via the parity check matrix. It takes soft information in,
-//! so naturally covers the punctured codes as well. This implementation is based on one described
+//! so inherently covers the punctured codes as well. This implementation is based on one described
 //! by Savin, arXiv:0803.1090. It is both reasonably efficient (no `atahn` required), and
-//! performs very close to optimal sum-product decoding. Error performance could possibly be
-//! improved using a min-sum correction factor for our codes, and decoding speed could be improved
-//! by constructing a set of inverse lookup tables for the parity checks, at the expense of
-//! significantly increased memory use.
-//!
-//! A fixed point version of this decoder would be useful, as it could potentially be optimised for
-//! embedded DSP operation. 8 bits per symbol seems plenty of resolution for the soft information,
-//! so error performance could be unaffected while gaining very substantial speed and memory
-//! improvements.
-//!
+//! performs very close to optimal sum-product decoding.
 
 #[cfg(test)]
 #[macro_use]

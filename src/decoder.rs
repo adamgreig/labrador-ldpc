@@ -234,20 +234,15 @@ impl LDPCCode {
     /// Requires:
     ///
     /// * `input` must be `n/8` long, where each bit is the received hard information
-    /// * `output` must be `(n+p)/8` (=`self.output_len()`) bytes long and is written with the
-    ///   decoded codeword, so the user data is present in the first `k/8` bytes.
-    /// * `working` must be `n+p` (=`self.decode_bf_working_len()`) bytes long.
+    /// * `output` must be `(n+punctured_bits)/8` (=`self.output_len()`) bytes long and is written
+    ///   with the decoded codeword, so the user data is present in the first `k/8` bytes.
+    /// * `working` must be `n+punctured_bits` (=`self.decode_bf_working_len()`) bytes long.
     ///
-    /// Runs for at most `maxiters` iterations, including attempting to fix punctured erasures on
-    /// applicable codes.
+    /// Runs for at most `maxiters` iterations, both when attempting to fix punctured erasures on
+    /// applicable codes, and in the main bit flipping decoder.
     ///
     /// Returns `(decoding success, iters)`. For punctured codes, `iters` includes iterations
     /// of the erasure decoding algorithm which is run first.
-    ///
-    /// ## Panics
-    /// * `input.len()` must be exactly `self.n()/8`
-    /// * `output.len()` must be exactly `self.output_len()`.
-    /// * `working.len()` must be exactly `self.decode_bf_working_len()`.
     pub fn decode_bf(&self, input: &[u8], output: &mut [u8],
                      working: &mut [u8], maxiters: usize)
         -> (bool, usize)
@@ -318,17 +313,39 @@ impl LDPCCode {
     /// Requires:
     ///
     /// * `llrs` must be `n` long, with positive numbers more likely to be a 0 bit.
-    /// * `output` must be allocated to (n+p)/8 bytes, of which the first k/8 bytes will be set
-    ///   to the decoded message (and the rest to the parity bits of the complete codeword)
+    /// * `output` must be allocated to (n+punctured_bits)/8 bytes, aka `output_len()`, of which
+    ///   the first k/8 bytes will be set to the decoded message (and the rest to the parity bits
+    ///   of the complete codeword)
     /// * `working` is the main working area which must be provided and must have
-    ///   `decode_ms_working_len` elements, equal to
-    ///   2*paritycheck_sum + 3n + 3*punctured_bits - 2k
-    /// * `working_u8` is te secondary working area which must be provided and must have
-    ///   `decode_ms_working_u8_len` elements, equal to (n+p-k)/8.
+    ///   `decode_ms_working_len()` elements, equal to
+    ///   2*paritycheck_sum + 3*n + 3*punctured_bits - 2*k
+    /// * `working_u8` is the secondary working area which must be provided and must have
+    ///   `decode_ms_working_u8_len()` elements, equal to (n + punctured_bits - k)/8.
     ///
     /// Will run for at most `maxiters` iterations.
     ///
     /// Returns decoding success and the number of iterations run for.
+    ///
+    /// ## Log Likelihood Ratios and choice of `T`
+    ///
+    /// The `llrs` input is a list of signed numbers, one per bit, where positive numbers mean
+    /// a bit is more likely to be 0, and larger magnitude numbers indicate increased confidence
+    /// on a logarithmic scale (so every step increase is a multiplication of the confidence).
+    ///
+    /// This decoder is invariant to a linear scaling of all the LLRs (in other words, it is
+    /// invariant to the channel noise level), so you can choose any quantisation level and
+    /// fixed-point interpretation you desire. This means you can view `i8` as representing
+    /// the 256 numbers between -1 and +0.9921875, or as just representing -128 to +127.
+    ///
+    /// Internally, variables of type `T` are used to accumulate messages, so it is useful to leave
+    /// some headroom in `T` after the range of your LLRs. For `T=i8` you might assign -32 to 31
+    /// for LLR inputs, so that several full-scale messages can be accumulated before saturation
+    /// occurs. On floating point types this is less of a concern.
+    ///
+    /// This also means if you only have hard information it makes no practical difference what
+    /// exact value you give the LLRs, but in the interests of avoiding saturation you may as
+    /// well pick +-1 in any unit (and you may as well use i8 since the additional range will
+    /// not be of benefit).
     pub fn decode_ms<T: DecodeFrom>(&self, llrs: &[T], output: &mut [u8],
                                     working: &mut [T], working_u8: &mut [u8],
                                     maxiters: usize)
@@ -452,10 +469,6 @@ impl LDPCCode {
     /// is correct. This function just assigns -/+ 1 for 1/0 bits.
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
-    ///
-    /// ## Panics
-    /// * `input.len()` must be exactly `self.n()/8`
-    /// * `llrs.len()` must be exactly `self.n()`
     pub fn hard_to_llrs<T: DecodeFrom>(&self, input: &[u8], llrs: &mut [T]) {
         assert_eq!(input.len(), self.n()/8, "input.len() != n/8");
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
@@ -470,10 +483,6 @@ impl LDPCCode {
     /// Convert LLRs into hard information.
     ///
     /// `llrs` must be n long, `output` must be n/8 long.
-    ///
-    /// ## Panics
-    /// * `input.len()` must be exactly `self.n()/8`
-    /// * `llrs.len()` must be exactly `self.n()`
     pub fn llrs_to_hard<T: DecodeFrom>(&self, llrs: &[T], output: &mut [u8]) {
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
         assert_eq!(output.len(), self.n()/8, "output.len() != n/8");
