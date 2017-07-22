@@ -1,0 +1,22 @@
+[package]
+authors = ["Adam Greig <adam@adamgreig.com>"]
+name = "labrador-ldpc-capi"
+version = "0.1.0"
+description = "C API for Labrador-LDPC error correcting code library"
+keywords = ["ldpc", "ecc", "labrador", "no_std"]
+categories = ["embedded", "no-std"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/adamgreig/labrador-ldpc"
+documentation = "https://docs.rs/labrador-ldpc-capi"
+
+[dependencies]
+labrador-ldpc = "1.0.0"
+
+[lib]
+name = "labrador_ldpc"
+crate-type = ["staticlib"]
+
+[profile.release]
+panic = 'abort'
+lto = true
