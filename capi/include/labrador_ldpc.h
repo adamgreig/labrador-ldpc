@@ -12,6 +12,7 @@
 #include <stdbool.h>
 
 /* Available LDPC codes.
+ *
  * For further details refer to:
  * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/enum.LDPCCode.html
  */
@@ -27,22 +28,94 @@ enum labrador_ldpc_code {
     LABRADOR_LDPC_CODE_TM8192,
 };
 
+/* Useful constants for each code, for statically allocating required memory.
+ *
+ * Each can be accessed directly as `LABRADOR_LDPC_N_TC512`, or with the
+ * code as a constant parameter, as `LABRADOR_LDPC_N(TC512)`.
+ *
+ * For further details refer to:
+ * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/struct.CodeParams.html
+ */
+#define LABRADOR_LDPC_CODE_(CODE) LABRADOR_LDPC_CODE_##CODE
+#define LABRADOR_LDPC_CODE(CODE)  LABRADOR_LDPC_CODE_(CODE)
+
+#define LABRADOR_LDPC_N_TC128  (128)
+#define LABRADOR_LDPC_N_TC256  (256)
+#define LABRADOR_LDPC_N_TC512  (512)
+#define LABRADOR_LDPC_N_TM1280 (1280)
+#define LABRADOR_LDPC_N_TM1536 (1536)
+#define LABRADOR_LDPC_N_TM2048 (2048)
+#define LABRADOR_LDPC_N_TM5120 (5120)
+#define LABRADOR_LDPC_N_TM6144 (6140)
+#define LABRADOR_LDPC_N_TM8192 (8192)
+#define LABRADOR_LDPC_N_(CODE) LABRADOR_LDPC_N_##CODE
+#define LABRADOR_LDPC_N(CODE)  LABRADOR_LDPC_N_(CODE)
+
+#define LABRADOR_LDPC_K_TC128  (64)
+#define LABRADOR_LDPC_K_TC256  (128)
+#define LABRADOR_LDPC_K_TC512  (256)
+#define LABRADOR_LDPC_K_TM1280 (1024)
+#define LABRADOR_LDPC_K_TM1536 (1024)
+#define LABRADOR_LDPC_K_TM2048 (1024)
+#define LABRADOR_LDPC_K_TM5120 (4096)
+#define LABRADOR_LDPC_K_TM6144 (4096)
+#define LABRADOR_LDPC_K_TM8192 (4096)
+#define LABRADOR_LDPC_K_(CODE) LABRADOR_LDPC_K_##CODE
+#define LABRADOR_LDPC_K(CODE)  LABRADOR_LDPC_K_(CODE)
+
+#define LABRADOR_LDPC_BF_WORKING_LEN_TC128  (128)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TC256  (256)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TC512  (512)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM1280 (1408)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM1536 (1792)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM2048 (2560)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM5120 (5632)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM6140 (7168)
+#define LABRADOR_LDPC_BF_WORKING_LEN_TM8192 (10240)
+#define LABRADOR_LDPC_BF_WORKING_LEN_(CODE) LABRADOR_LDPC_BF_WORKING_LEN_##CODE
+#define LABRADOR_LDPC_BF_WORKING_LEN(CODE)  LABRADOR_LDPC_BF_WORKING_LEN_(CODE)
+
+#define LABRADOR_LDPC_MS_WORKING_LEN_TC128  (1280)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TC256  (2560)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TC512  (5120)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM1280 (12160)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM1536 (15104)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM2048 (20992)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM5120 (48640)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM6140 (60416)
+#define LABRADOR_LDPC_MS_WORKING_LEN_TM8192 (83968)
+#define LABRADOR_LDPC_MS_WORKING_LEN_(CODE) LABRADOR_LDPC_MS_WORKING_LEN_##CODE
+#define LABRADOR_LDPC_MS_WORKING_LEN(CODE)  LABRADOR_LDPC_MS_WORKING_LEN_(CODE)
+
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TC128  (8)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TC256  (16)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TC512  (32)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM1280 (48)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM1536 (96)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM2048 (192)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM5120 (192)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM6140 (384)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_TM8192 (768)
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN_(CODE) LABRADOR_LDPC_MS_WORKING_U8_LEN_##CODE
+#define LABRADOR_LDPC_MS_WORKING_U8_LEN(CODE)  LABRADOR_LDPC_MS_WORKING_U8_LEN_(CODE)
+
+#define LABRADOR_LDPC_OUTPUT_LEN_TC128  (16)
+#define LABRADOR_LDPC_OUTPUT_LEN_TC256  (32)
+#define LABRADOR_LDPC_OUTPUT_LEN_TC512  (64)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM1280 (176)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM1536 (224)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM2048 (320)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM5120 (704)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM6140 (896)
+#define LABRADOR_LDPC_OUTPUT_LEN_TM8192 (1280)
+#define LABRADOR_LDPC_OUTPUT_LEN_(CODE) LABRADOR_LDPC_OUTPUT_LEN_##CODE
+#define LABRADOR_LDPC_OUTPUT_LEN(CODE)  LABRADOR_LDPC_OUTPUT_LEN_(CODE)
+
 /* Returns the code length n (number of codeword bits) for a given code. */
 size_t labrador_ldpc_code_n(enum labrador_ldpc_code code);
 
 /* Returns the code dimension k (number of data bits) for a given code. */
 size_t labrador_ldpc_code_k(enum labrador_ldpc_code code);
-
-/* Encode the first k/8 bytes of `codeword` into the rest of `codeword`,
- * using the `code` LDPC code.
- */
-void labrador_ldpc_encode(enum labrador_ldpc_code code, uint8_t *codeword);
-
-/* Encode all of `data` (k/8 bytes long) into `codeword` (n/8 bytes long),
- * first copying `data` into `codeword`, using the `code` LDPC code.
- */
-void labrador_ldpc_copy_encode(enum labrador_ldpc_code code,
-                               const uint8_t* data, uint8_t* codeword);
 
 /* Returns the required length of the working area for the BF decoder. */
 size_t labrador_ldpc_bf_working_len(enum labrador_ldpc_code code);
@@ -57,6 +130,23 @@ size_t labrador_ldpc_ms_working_len(enum labrador_ldpc_code code);
 
 /* Returns the required length for the output of any decoder. */
 size_t labrador_ldpc_output_len(enum labrador_ldpc_code code);
+
+/* Encode the first k/8 bytes of `codeword` into the rest of `codeword`,
+ * using the `code` LDPC code.
+ *
+ * If `codeword` is 4-byte aligned, encoding is performed 32 bits at a time,
+ * which is usually faster than byte at a time.
+ */
+void labrador_ldpc_encode(enum labrador_ldpc_code code, uint8_t *codeword);
+
+/* Encode all of `data` (k/8 bytes long) into `codeword` (n/8 bytes long),
+ * first copying `data` into `codeword`, using the `code` LDPC code.
+ *
+ * If `codeword` is 4-byte aligned, encoding is performed 32 bits at a time,
+ * which is usually faster than byte at a time.
+ */
+void labrador_ldpc_copy_encode(enum labrador_ldpc_code code,
+                               const uint8_t* data, uint8_t* codeword);
 
 /* Run the BF decoder:
  *
@@ -131,5 +221,23 @@ void labrador_ldpc_hard_to_llrs_f32(enum labrador_ldpc_code code,
                                     const uint8_t* input, float* llrs);
 void labrador_ldpc_hard_to_llrs_f64(enum labrador_ldpc_code code,
                                     const uint8_t* input, double* llrs);
+
+/* Convert LLRs into hard information.
+ *
+ * Assumes positive numbers are more likely to be 0 bits.
+ *
+ * `llrs` must be n entries long.
+ * `output` must be n/8 long.
+ *
+ * Available in four variants for different LLR types.
+ */
+void labrador_ldpc_llrs_to_hard_i8(enum labrador_ldpc_code code,
+                                   const int8_t* llrs, uint8_t* output);
+void labrador_ldpc_llrs_to_hard_i16(enum labrador_ldpc_code code,
+                                    const int16_t* llrs, uint8_t* output);
+void labrador_ldpc_llrs_to_hard_f32(enum labrador_ldpc_code code,
+                                    const float* llrs, uint8_t* output);
+void labrador_ldpc_llrs_to_hard_f64(enum labrador_ldpc_code code,
+                                    const double* llrs, uint8_t* output);
 
 #endif /* LABRADOR_LDPC_CAPI */

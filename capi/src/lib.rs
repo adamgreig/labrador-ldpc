@@ -4,6 +4,7 @@
 extern crate labrador_ldpc;
 
 use labrador_ldpc::LDPCCode;
+use labrador_ldpc::decoder::DecodeFrom;
 use core::slice;
 
 #[lang="eh_personality"] extern fn eh_personality() {}
@@ -21,17 +22,25 @@ pub extern fn labrador_ldpc_code_k(code: LDPCCode) -> usize {
 
 #[no_mangle]
 pub extern fn labrador_ldpc_encode(code: LDPCCode, codeword: *mut u8) {
-    // TODO use alignment of codeword to optimally choose type to cast to
-    let codeword: &mut[u8] = unsafe { slice::from_raw_parts_mut(codeword, code.n()/8) };
-    code.encode(codeword);
+    if (codeword as usize) % 4 == 0 {
+        let codeword: &mut[u32] = unsafe { slice::from_raw_parts_mut(codeword as *mut u32, code.n()/32) };
+        code.encode(codeword);
+    } else {
+        let codeword: &mut[u8] = unsafe { slice::from_raw_parts_mut(codeword, code.n()/8) };
+        code.encode(codeword);
+    }
 }
 
 #[no_mangle]
 pub extern fn labrador_ldpc_copy_encode(code: LDPCCode, data: *const u8, codeword: *mut u8) {
-    // TODO use alignment of codeword to optimally choose type to cast to
     let data: &[u8] = unsafe { slice::from_raw_parts(data, code.k()/8) };
-    let codeword: &mut[u8] = unsafe { slice::from_raw_parts_mut(codeword, code.n()/8) };
-    code.copy_encode(data, codeword);
+    if (codeword as usize) % 4 == 0 {
+        let codeword: &mut[u32] = unsafe { slice::from_raw_parts_mut(codeword as *mut u32, code.n()/32) };
+        code.copy_encode(data, codeword);
+    } else {
+        let codeword: &mut[u8] = unsafe { slice::from_raw_parts_mut(codeword, code.n()/8) };
+        code.copy_encode(data, codeword);
+    }
 }
 
 #[no_mangle]
@@ -69,9 +78,8 @@ pub extern fn labrador_ldpc_decode_bf(code: LDPCCode, input: *const u8, output: 
     result
 }
 
-fn decode_ms<T>(code: LDPCCode, llrs: *const T, output: *mut u8, working: *mut T,
-                working_u8: *mut u8, max_iters: usize, iters_run: *mut usize) -> bool
-    where T: labrador_ldpc::decoder::DecodeFrom
+fn decode_ms<T: DecodeFrom>(code: LDPCCode, llrs: *const T, output: *mut u8, working: *mut T,
+                            working_u8: *mut u8, max_iters: usize, iters_run: *mut usize) -> bool
 {
     let llrs: &[T] = unsafe { slice::from_raw_parts(llrs, code.n()) };
     let output: &mut[u8] = unsafe { slice::from_raw_parts_mut(output, code.output_len()) };
@@ -116,9 +124,7 @@ pub extern fn labrador_ldpc_decode_ms_f64(code: LDPCCode, llrs: *const f64, outp
     decode_ms::<f64>(code, llrs, output, working, working_u8, max_iters, iters_run)
 }
 
-fn hard_to_llrs<T>(code: LDPCCode, input: *const u8, llrs: *mut T)
-    where T: labrador_ldpc::decoder::DecodeFrom
-{
+fn hard_to_llrs<T: DecodeFrom>(code: LDPCCode, input: *const u8, llrs: *mut T) {
     let input: &[u8] = unsafe { slice::from_raw_parts(input, code.n()/8) };
     let llrs: &mut[T] = unsafe { slice::from_raw_parts_mut(llrs, code.n()) };
     code.hard_to_llrs(input, llrs);
@@ -142,4 +148,30 @@ pub extern fn labrador_ldpc_hard_to_llrs_f32(code: LDPCCode, input: *const u8, l
 #[no_mangle]
 pub extern fn labrador_ldpc_hard_to_llrs_f64(code: LDPCCode, input: *const u8, llrs: *mut f64) {
     hard_to_llrs::<f64>(code, input, llrs);
+}
+
+fn llrs_to_hard<T: DecodeFrom>(code: LDPCCode, llrs: *const T, output: *mut u8) {
+    let llrs: &[T] = unsafe { slice::from_raw_parts(llrs, code.n()) };
+    let output: &mut[u8] = unsafe { slice::from_raw_parts_mut(output, code.n() / 8) };
+    code.llrs_to_hard(llrs, output);
+}
+
+#[no_mangle]
+pub extern fn labrador_ldpc_llrs_to_hard_i8(code: LDPCCode, llrs: *const i8, output: *mut u8) {
+    llrs_to_hard::<i8>(code, llrs, output);
+}
+
+#[no_mangle]
+pub extern fn labrador_ldpc_llrs_to_hard_i16(code: LDPCCode, llrs: *const i16, output: *mut u8) {
+    llrs_to_hard::<i16>(code, llrs, output);
+}
+
+#[no_mangle]
+pub extern fn labrador_ldpc_llrs_to_hard_f32(code: LDPCCode, llrs: *const f32, output: *mut u8) {
+    llrs_to_hard::<f32>(code, llrs, output);
+}
+
+#[no_mangle]
+pub extern fn labrador_ldpc_llrs_to_hard_f64(code: LDPCCode, llrs: *const f64, output: *mut u8) {
+    llrs_to_hard::<f64>(code, llrs, output);
 }

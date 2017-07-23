@@ -17,6 +17,10 @@ labrador-ldpc = "1.0.0"
 name = "labrador_ldpc"
 crate-type = ["staticlib"]
 
+[profile.dev]
+panic = 'abort'
+lto = true
+
 [profile.release]
 panic = 'abort'
 lto = true
