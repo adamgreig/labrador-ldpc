@@ -35,12 +35,11 @@ int main() {
      * or we can use this macro to look up a constant defined earlier:
      */
     enum labrador_ldpc_code code = LABRADOR_LDPC_CODE(CODE);
-    printf("Code %d: n=%lu k=%lu\n", code,
-           labrador_ldpc_code_n(code), labrador_ldpc_code_k(code));
     size_t code_n = labrador_ldpc_code_n(code);
     size_t code_k = labrador_ldpc_code_k(code);
+    printf("Code %d: n=%lu k=%lu\n", code, code_n, code_k);
 
-    /* Make up a message to encode, in this case 0, 1, 2, ..., k */
+    /* Make up a message to encode, in this case 0, 1, 2, ..., k/8 */
     printf("Encoding\n");
     for(int i=0; i<code_k/8; i++) {
         message[i] = i;
