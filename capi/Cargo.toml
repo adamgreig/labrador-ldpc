@@ -8,7 +8,7 @@ categories = ["embedded", "no-std"]
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/adamgreig/labrador-ldpc"
-documentation = "https://docs.rs/labrador-ldpc-capi"
+documentation = "https://docs.rs/labrador-ldpc"
 
 [dependencies]
 labrador-ldpc = "1.0.0"
