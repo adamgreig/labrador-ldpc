@@ -10,4 +10,4 @@ resource-constrained embedded scenarios.
 
 [Repository](https://github.com/adamgreig/labrador-ldpc)
 
-[C API](https://github.com/adamgreig/tree/master/capi)
+[C API](https://github.com/adamgreig/labrador-ldpc/tree/master/capi)
