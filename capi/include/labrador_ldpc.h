@@ -31,7 +31,10 @@ enum labrador_ldpc_code {
 /* Useful constants for each code, for statically allocating required memory.
  *
  * Each can be accessed directly as `LABRADOR_LDPC_N_TC512`, or with the
- * code as a constant parameter, as `LABRADOR_LDPC_N(TC512)`.
+ * code as a constant parameter, as `LABRADOR_LDPC_N(TC512)`, or with the code
+ * as another define, for example:
+ * #define CODE TC512
+ * int n = LABRADOR_LDPC_N(CODE);
  *
  * For further details refer to:
  * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/struct.CodeParams.html
