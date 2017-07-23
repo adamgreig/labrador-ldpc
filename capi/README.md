@@ -5,8 +5,15 @@ Rust. The C API compiles to a small static library you can link in to existing
 C code as though it were a C library, suitable for use on embedded and regular
 systems.
 
+Labrador-LDPC is a library for encoding and decoding the telemetry and 
+telecommand LDPC codes specified by the CCSDS.
+
+For the main documentation of the underlying LDPC library, please refer to
+the [main documentation](https://docs.rs/labrador-ldpc).
+
+
 ## Quick Example
-```
+```c
     /* Choose a code, here the "telecommand (128, 64)" code.
      * See the main documentation for the list of all available codes.
      */
@@ -42,20 +49,14 @@ systems.
     labrador_ldpc_decode_bf(code, codeword, decoded, working, 50, NULL);
 ```
 
-## Labrador-LDPC
-
-Labrador-LDPC is a library for encoding and decoding the telemetry and 
-telecommand LDPC codes specified by the CCSDS.
-
-For the main documentation of the underlying LDPC library, please refer to
-the [main documentation](https://docs.rs/labrador-ldpc).
-
 ## Building the C API
 
-You will need Rust installed. Building should then be as simple as:
+You will need Rust installed. Try [rustup.rs](https://rustup.rs/). Building 
+should then be as simple as:
 ```
 cargo build --release
 ```
+
 The generated library is placed in `target/release/liblabrador_ldpc.a`.
 
 Xargo is recommended for building cross platform, for example:
@@ -79,10 +80,10 @@ Labrador-LDPC does not itself perform any dynamic allocation, so all memory
 required must be provided already allocated by the user, either statically or
 dynamically.
 
-The amount of memory required depends on the code in use. There are tables in
-the main library documentation detailing the exact numbers for each code, but
-programmatically methods are provided to obtain these numbers both statically
-and dynamically for a given code:
+The amount of memory required depends on the LDPC code in use. There are tables
+in the main library documentation detailing the exact numbers for each code,
+and methods are provided to obtain these numbers both
+statically and dynamically for a given code:
 
 * Dynamically, use the functions `labrador_ldpc_code_n(code)`,
   `labrador_ldpc_code_k(code)`, etc, to find the required sizes.
@@ -90,9 +91,10 @@ and dynamically for a given code:
 * Statically, use the macros `LABRADOR_LDPC_N(TC128)`, etc, to find
   the required sizes. You can also use `LABRADOR_LDPC_CODE(TC128)` to
   obtain the `enum labrador_ldpc_code` for a given code name.
+  See `examples/example.c` for a completely statically allocated example.
 
 Each function in `labrador_ldpc.h` has a comment describing the required
-lengths of each input. Encoding only requires enough memory to store the
+lengths of each parameter. Encoding only requires enough memory to store the
 encoded codeword, while the decoders all have some working area requirement.
 
 Additionally there is a fixed read-only data requirement for code-related 
@@ -143,5 +145,8 @@ of each bit being 0 or 1):
   hard information from `input` into LLRs in `llrs`. `T` may be `int8_t`,
   `int16_t`, `float`, or `double`.
 * `labrador_ldpc_llrs_to_hard_T(code, T* llrs, uint8_t output)` converts
-  LLRS from `llrs` into hard information in `output`. `T` may be `int8_t`,
+  LLRs from `llrs` into hard information in `output`. `T` may be `int8_t`,
   `int16_t`, `float`, or `double`.
+
+See the short example above for `decode_bf` usage, and `examples/example.c`
+for `decode_ms` usage.
