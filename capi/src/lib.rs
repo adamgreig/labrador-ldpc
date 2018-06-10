@@ -6,10 +6,12 @@ extern crate labrador_ldpc;
 use labrador_ldpc::LDPCCode;
 use labrador_ldpc::decoder::DecodeFrom;
 use core::slice;
-use core::panic::PanicInfo;
 
 #[panic_implementation]
-fn panic(_info: &PanicInfo) -> ! { loop {} }
+#[no_mangle]
+pub fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
 
 #[no_mangle]
 pub extern fn labrador_ldpc_code_n(code: LDPCCode) -> usize {
