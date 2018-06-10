@@ -1,14 +1,15 @@
 #![no_std]
-#![feature(lang_items)]
+#![feature(panic_implementation)]
 
 extern crate labrador_ldpc;
 
 use labrador_ldpc::LDPCCode;
 use labrador_ldpc::decoder::DecodeFrom;
 use core::slice;
+use core::panic::PanicInfo;
 
-#[lang="eh_personality"] extern fn eh_personality() {}
-#[lang="panic_fmt"] #[no_mangle] pub extern fn panic_fmt() { loop {}}
+#[panic_implementation]
+fn panic(_info: &PanicInfo) -> ! { loop {} }
 
 #[no_mangle]
 pub extern fn labrador_ldpc_code_n(code: LDPCCode) -> usize {
