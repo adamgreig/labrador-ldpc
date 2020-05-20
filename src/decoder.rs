@@ -14,7 +14,7 @@ use core::f64;
 
 use core::ops::{Add,AddAssign,Neg,Sub};
 
-use ::codes::LDPCCode;
+use crate::codes::LDPCCode;
 
 // Ugh gross yuck.
 //
@@ -23,13 +23,13 @@ use ::codes::LDPCCode;
 // loop and it's so much faster than the obvious `if f < 0 { -f } else { f }`.
 fn fabs(f: f64) -> f64 {
     unsafe {
-        let x: u64 = *((&f as *const f64) as *const u64) & 0x7FFFFFFFFFFFFFFF;
+        let x: u64 = *((&f as *const f64) as *const u64) & 0x7FFF_FFFF_FFFF_FFFF;
         *((&x as *const u64) as *const f64)
     }
 }
 fn fabsf(f: f32) -> f32 {
     unsafe {
-        let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFFFFFF;
+        let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFF_FFFF;
         *((&x as *const u32) as *const f32)
     }
 }
@@ -94,28 +94,28 @@ impl LDPCCode {
     /// Get the length of [u8] required for the working area of `decode_bf`.
     ///
     /// Equal to n + punctured_bits.
-    pub fn decode_bf_working_len(&self) -> usize {
+    pub fn decode_bf_working_len(self) -> usize {
         self.n() + self.punctured_bits()
     }
 
     /// Get the length of [T] required for the working area of `decode_ms`.
     ///
     /// Equal to 2 * paritycheck_sum + 3*n + 3*punctured_bits - 2*k.
-    pub fn decode_ms_working_len(&self) -> usize {
-        (2 * self.paritycheck_sum() as usize + 3*self.n() + 3*self.punctured_bits() - 2*self.k())
+    pub fn decode_ms_working_len(self) -> usize {
+        2 * self.paritycheck_sum() as usize + 3*self.n() + 3*self.punctured_bits() - 2*self.k()
     }
 
     /// Get the length of [u8] required for the working_u8 area of `decode_ms`.
     ///
     /// Equal to (n + punctured_bits - k)/8.
-    pub fn decode_ms_working_u8_len(&self) -> usize {
+    pub fn decode_ms_working_u8_len(self) -> usize {
         (self.n() + self.punctured_bits() - self.k()) / 8
     }
 
     /// Get the length of [u8] required for the output of any decoder.
     ///
     /// Equal to (n+punctured_bits)/8.
-    pub fn output_len(&self) -> usize {
+    pub fn output_len(self) -> usize {
         (self.n() + self.punctured_bits()) / 8
     }
 
@@ -144,7 +144,8 @@ impl LDPCCode {
     /// Returns `(success, number of iterations run)`. Success only indicates that every punctured
     /// bit got a majority vote; but they might still be wrong; likewise failure means not every
     /// bit got a vote but many may still have been determined correctly.
-    fn decode_erasures(&self, codeword: &mut [u8], working: &mut [u8], maxiters: usize)
+    #[allow(clippy::many_single_char_names)]
+    fn decode_erasures(self, codeword: &mut [u8], working: &mut [u8], maxiters: usize)
         -> (bool, usize)
     {
         assert_eq!(codeword.len(), self.output_len());
@@ -243,7 +244,7 @@ impl LDPCCode {
     ///
     /// Returns `(decoding success, iters)`. For punctured codes, `iters` includes iterations
     /// of the erasure decoding algorithm which is run first.
-    pub fn decode_bf(&self, input: &[u8], output: &mut [u8],
+    pub fn decode_bf(self, input: &[u8], output: &mut [u8],
                      working: &mut [u8], maxiters: usize)
         -> (bool, usize)
     {
@@ -346,7 +347,8 @@ impl LDPCCode {
     /// exact value you give the LLRs, but in the interests of avoiding saturation you may as
     /// well pick +-1 in any unit (and you may as well use i8 since the additional range will
     /// not be of benefit).
-    pub fn decode_ms<T: DecodeFrom>(&self, llrs: &[T], output: &mut [u8],
+    #[allow(clippy::cognitive_complexity,clippy::many_single_char_names)]
+    pub fn decode_ms<T: DecodeFrom>(self, llrs: &[T], output: &mut [u8],
                                     working: &mut [T], working_u8: &mut [u8],
                                     maxiters: usize)
         -> (bool, usize)
@@ -469,7 +471,7 @@ impl LDPCCode {
     /// is correct. This function just assigns -/+ 1 for 1/0 bits.
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
-    pub fn hard_to_llrs<T: DecodeFrom>(&self, input: &[u8], llrs: &mut [T]) {
+    pub fn hard_to_llrs<T: DecodeFrom>(self, input: &[u8], llrs: &mut [T]) {
         assert_eq!(input.len(), self.n()/8, "input.len() != n/8");
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
         let llr = -T::one();
@@ -483,7 +485,7 @@ impl LDPCCode {
     /// Convert LLRs into hard information.
     ///
     /// `llrs` must be n long, `output` must be n/8 long.
-    pub fn llrs_to_hard<T: DecodeFrom>(&self, llrs: &[T], output: &mut [u8]) {
+    pub fn llrs_to_hard<T: DecodeFrom>(self, llrs: &[T], output: &mut [u8]) {
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
         assert_eq!(output.len(), self.n()/8, "output.len() != n/8");
 
@@ -501,10 +503,10 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use ::codes::{LDPCCode, CodeParams,
-                  TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                  TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                  TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
+    use crate::codes::{LDPCCode, CodeParams,
+                       TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
+                       TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
+                       TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
 
     const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
                                    LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,

@@ -14,8 +14,8 @@
 // extra space used in code memory.
 //
 
-pub const HZ: u8 = (0 << 6);
-pub const HI: u8 = (1 << 6);
+pub const HZ: u8 = 0 << 6;
+pub const HI: u8 = 1 << 6;
 
 /// Compact parity matrix for the TC128 code
 pub static TC128_H: [[[u8; 11]; 4]; 3] = [
@@ -107,7 +107,7 @@ pub static TC512_H: [[[u8; 11]; 4]; 3] = [
 // The PI_K function is:
 // pi_k(i) = M/4 (( theta_k + floor(4i / M)) mod 4) + (phi_k( floor(4i / M), M ) + i) mod M/4
 
-pub const HP: u8 = (2 << 6);
+pub const HP: u8 = 2 << 6;
 
 /// Compact parity matrix for the rate-1/2 TM codes
 pub static TM_R12_H: [[[u8; 11]; 4]; 3] = [

@@ -8,6 +8,9 @@
 // We don't shape the arrays because this way simplifies the type signature of the functions
 // that use them.
 
+// These literals won't be any more readable with extra underscores.
+#![allow(clippy::unreadable_literal)]
+
 /// Compact generator matrix for the TC128 code
 ///
 /// P is 64x64, `circulant_size`=16, so we have 4 blocks of 1 u64 per row

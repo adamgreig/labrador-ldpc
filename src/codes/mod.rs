@@ -5,7 +5,7 @@
 //! load their generator and parity check matrices.
 
 // We have a bunch of expressions with +0 for clarity of where the 0 comes from
-#![cfg_attr(feature = "cargo-clippy", allow(identity_op))]
+#![allow(clippy::identity_op,clippy::erasing_op)]
 
 /// This module contains the constants representing the generator matrices.
 ///
@@ -269,7 +269,7 @@ impl Iterator for ParityIter {
     /// This function really really wants to be inlined for performance. It does almost no
     /// computation but returns thousands of times, so the overhead of a function call
     /// completely dominates its runtime if not inlined.
-    #[cfg_attr(feature="cargo-clippy", allow(inline_always))]
+    #[allow(clippy::inline_always)]
     #[inline(always)]
     fn next(&mut self) -> Option<(usize, usize)> {
         use self::compact_parity_checks::{HI, HP, THETA_K};
@@ -363,8 +363,8 @@ impl Iterator for ParityIter {
 
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
-    pub fn params(&self) -> CodeParams {
-        match *self {
+    pub fn params(self) -> CodeParams {
+        match self {
             LDPCCode::TC128  => TC128_PARAMS,
             LDPCCode::TC256  => TC256_PARAMS,
             LDPCCode::TC512  => TC512_PARAMS,
@@ -378,38 +378,38 @@ impl LDPCCode {
     }
 
     /// Get the code length (number of codeword bits)
-    pub fn n(&self) -> usize {
+    pub fn n(self) -> usize {
         self.params().n
     }
 
     /// Get the code dimension (number of information bits)
-    pub fn k(&self) -> usize {
+    pub fn k(self) -> usize {
         self.params().k
     }
 
     /// Get the number of punctured bits (parity bits not transmitted)
-    pub fn punctured_bits(&self) -> usize {
+    pub fn punctured_bits(self) -> usize {
         self.params().punctured_bits
     }
 
     /// Get the size of the sub-matrices used to define the parity check matrix
-    pub fn submatrix_size(&self) -> usize {
+    pub fn submatrix_size(self) -> usize {
         self.params().submatrix_size
     }
 
     /// Get the size of the sub-matrices used to define the generator matrix
-    pub fn circulant_size(&self) -> usize {
+    pub fn circulant_size(self) -> usize {
         self.params().circulant_size
     }
 
     /// Get the sum of the parity check matrix (total number of parity check edges)
-    pub fn paritycheck_sum(&self) -> u32 {
+    pub fn paritycheck_sum(self) -> u32 {
         self.params().paritycheck_sum
     }
 
     /// Get the reference to the compact generator matrix for this code
-    pub fn compact_generator(&self) -> &'static [u64] {
-        match *self {
+    pub fn compact_generator(self) -> &'static [u64] {
+        match self {
             LDPCCode::TC128  => &compact_generators::TC128_G,
             LDPCCode::TC256  => &compact_generators::TC256_G,
             LDPCCode::TC512  => &compact_generators::TC512_G,
@@ -431,8 +431,8 @@ impl LDPCCode {
     ///
     /// The iterator yields (check, variable) pairs, corresponding to the index of a
     /// row and column in the parity check matrix which contains a 1.
-    pub fn iter_paritychecks(&self) -> ParityIter {
-        match *self {
+    pub fn iter_paritychecks(self) -> ParityIter {
+        match self {
             LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512 => self.iter_paritychecks_tc(),
             LDPCCode::TM1280 | LDPCCode::TM1536 | LDPCCode::TM2048 |
             LDPCCode::TM5120 | LDPCCode::TM6144 | LDPCCode::TM8192 => self.iter_paritychecks_tm(),
@@ -440,8 +440,8 @@ impl LDPCCode {
     }
 
     /// Set up a ParityIter for a TC code
-    fn iter_paritychecks_tc(&self) -> ParityIter {
-        let prototype = match *self {
+    fn iter_paritychecks_tc(self) -> ParityIter {
+        let prototype = match self {
             LDPCCode::TC128 => &compact_parity_checks::TC128_H,
             LDPCCode::TC256 => &compact_parity_checks::TC256_H,
             LDPCCode::TC512 => &compact_parity_checks::TC512_H,
@@ -463,7 +463,7 @@ impl LDPCCode {
     }
 
     /// Set up a ParityIter for a TM code
-    fn iter_paritychecks_tm(&self) -> ParityIter {
+    fn iter_paritychecks_tm(self) -> ParityIter {
         let m = self.submatrix_size();
         let phi = match m {
             128  => &self::compact_parity_checks::PHI_J_K_M128,

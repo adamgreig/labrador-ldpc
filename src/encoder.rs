@@ -7,11 +7,11 @@
 //! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
 // We have a couple of expressions with +0 for clarity of where the 0 comes from
-#![cfg_attr(feature="cargo-clippy", allow(identity_op))]
+#![allow(clippy::identity_op)]
 
 use core::slice;
 
-use ::codes::LDPCCode;
+use crate::codes::LDPCCode;
 
 /// Trait for the types of codeword we can encode into.
 ///
@@ -294,7 +294,7 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use ::codes::LDPCCode;
+    use crate::codes::LDPCCode;
 
     macro_rules! test_encode {
         ($code:path, $parity:expr) => {
