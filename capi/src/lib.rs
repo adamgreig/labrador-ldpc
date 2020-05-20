@@ -1,5 +1,4 @@
 #![no_std]
-#![feature(panic_implementation)]
 
 extern crate labrador_ldpc;
 
@@ -7,7 +6,7 @@ use labrador_ldpc::LDPCCode;
 use labrador_ldpc::decoder::DecodeFrom;
 use core::slice;
 
-#[panic_implementation]
+#[panic_handler]
 #[no_mangle]
 pub fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
