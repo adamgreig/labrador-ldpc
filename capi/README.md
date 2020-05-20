@@ -51,12 +51,7 @@ the [main documentation](https://docs.rs/labrador-ldpc).
 
 ## Building the C API
 
-You will need Rust installed. Try [rustup.rs](https://rustup.rs/). You need to
-be using a nightly release of the compiler to support `lang_items`:
-```
-rustup toolchain install nightly
-rustup override set nightly
-```
+You will need Rust installed. Try [rustup.rs](https://rustup.rs/).
 
 Building should then be as simple as:
 ```
@@ -68,7 +63,7 @@ The generated library is placed in `target/release/liblabrador_ldpc.a`.
 To build cross-platform for Rust supported targets:
 ```
 rustup target add thumbv7em-none-eabihf
-cargo build --release --target thumbv7em-none-eabihf`
+cargo build --release --target thumbv7em-none-eabihf
 ```
 
 For unsupported targets consider using Xargo:
