@@ -14,7 +14,7 @@
 /* Available LDPC codes.
  *
  * For further details refer to:
- * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/enum.LDPCCode.html
+ * https://docs.rs/labrador-ldpc/1.0.1/labrador_ldpc/codes/enum.LDPCCode.html
  */
 enum labrador_ldpc_code {
     LABRADOR_LDPC_CODE_TC128    = 0,
@@ -37,7 +37,7 @@ enum labrador_ldpc_code {
  * int n = LABRADOR_LDPC_N(CODE);
  *
  * For further details refer to:
- * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/struct.CodeParams.html
+ * https://docs.rs/labrador-ldpc/1.0.1/labrador_ldpc/codes/struct.CodeParams.html
  */
 #define LABRADOR_LDPC_CODE_(CODE) LABRADOR_LDPC_CODE_##CODE
 #define LABRADOR_LDPC_CODE(CODE)  LABRADOR_LDPC_CODE_(CODE)
@@ -187,7 +187,7 @@ bool labrador_ldpc_decode_bf(enum labrador_ldpc_code code,
  *
  * Four variants are provided which use different types for the LLRs.
  * For details on this choice please refer to:
- * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/enum.LDPCCode.html,
+ * https://docs.rs/labrador-ldpc/1.0.1/labrador_ldpc/codes/enum.LDPCCode.html,
  * section "Log Likelihood Ratios and choice of T".
  */
 bool labrador_ldpc_decode_ms_i8(enum labrador_ldpc_code code,
