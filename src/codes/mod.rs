@@ -34,34 +34,35 @@ mod compact_parity_checks;
 ///
 /// For code parameters see the [`CodeParams`](struct.CodeParams.html) structs also in this module:
 /// [`TC128_PARAMS`](constant.TC128_PARAMS.html) etc.
+#[repr(C)]
 #[derive(Copy,Clone,Debug,Eq,PartialEq,Hash)]
 pub enum LDPCCode {
     /// n=128 k=64 r=1/2
-    TC128,
+    TC128 = 0,
 
     /// n=256 k=128 r=1/2
-    TC256,
+    TC256 = 1,
 
     /// n=512 k=256 r=1/2
-    TC512,
+    TC512 = 2,
 
     /// n=1280 k=1024 r=4/5
-    TM1280,
+    TM1280 = 3,
 
     /// n=1536 k=1024 r=2/3
-    TM1536,
+    TM1536 = 4,
 
     /// n=2048 k=1024 r=1/2
-    TM2048,
+    TM2048 = 5,
 
     /// n=5120 k=4096 r=4/5
-    TM5120,
+    TM5120 = 6,
 
     /// n=6144 k=4096 r=2/3
-    TM6144,
+    TM6144 = 7,
 
     /// n=8192 k=4096 r=1/2
-    TM8192,
+    TM8192 = 8,
 }
 
 /// Parameters for a given LDPC code.
