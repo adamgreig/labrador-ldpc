@@ -17,15 +17,15 @@
  * https://docs.rs/labrador-ldpc/1.0.0/labrador_ldpc/codes/enum.LDPCCode.html
  */
 enum labrador_ldpc_code {
-    LABRADOR_LDPC_CODE_TC128,
-    LABRADOR_LDPC_CODE_TC256,
-    LABRADOR_LDPC_CODE_TC512,
-    LABRADOR_LDPC_CODE_TM1280,
-    LABRADOR_LDPC_CODE_TM1536,
-    LABRADOR_LDPC_CODE_TM2048,
-    LABRADOR_LDPC_CODE_TM5120,
-    LABRADOR_LDPC_CODE_TM6144,
-    LABRADOR_LDPC_CODE_TM8192,
+    LABRADOR_LDPC_CODE_TC128    = 0,
+    LABRADOR_LDPC_CODE_TC256    = 1,
+    LABRADOR_LDPC_CODE_TC512    = 2,
+    LABRADOR_LDPC_CODE_TM1280   = 3,
+    LABRADOR_LDPC_CODE_TM1536   = 4,
+    LABRADOR_LDPC_CODE_TM2048   = 5,
+    LABRADOR_LDPC_CODE_TM5120   = 6,
+    LABRADOR_LDPC_CODE_TM6144   = 7,
+    LABRADOR_LDPC_CODE_TM8192   = 8,
 };
 
 /* Useful constants for each code, for statically allocating required memory.
