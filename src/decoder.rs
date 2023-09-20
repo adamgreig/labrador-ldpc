@@ -94,28 +94,28 @@ impl LDPCCode {
     /// Get the length of [u8] required for the working area of `decode_bf`.
     ///
     /// Equal to n + punctured_bits.
-    pub fn decode_bf_working_len(self) -> usize {
+    pub const fn decode_bf_working_len(self) -> usize {
         self.n() + self.punctured_bits()
     }
 
     /// Get the length of [T] required for the working area of `decode_ms`.
     ///
     /// Equal to 2 * paritycheck_sum + 3*n + 3*punctured_bits - 2*k.
-    pub fn decode_ms_working_len(self) -> usize {
+    pub const fn decode_ms_working_len(self) -> usize {
         2 * self.paritycheck_sum() as usize + 3*self.n() + 3*self.punctured_bits() - 2*self.k()
     }
 
     /// Get the length of [u8] required for the working_u8 area of `decode_ms`.
     ///
     /// Equal to (n + punctured_bits - k)/8.
-    pub fn decode_ms_working_u8_len(self) -> usize {
+    pub const fn decode_ms_working_u8_len(self) -> usize {
         (self.n() + self.punctured_bits() - self.k()) / 8
     }
 
     /// Get the length of [u8] required for the output of any decoder.
     ///
     /// Equal to (n+punctured_bits)/8.
-    pub fn output_len(self) -> usize {
+    pub const fn output_len(self) -> usize {
         (self.n() + self.punctured_bits()) / 8
     }
 

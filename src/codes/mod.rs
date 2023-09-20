@@ -364,7 +364,7 @@ impl Iterator for ParityIter {
 
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
-    pub fn params(self) -> CodeParams {
+    pub const fn params(self) -> CodeParams {
         match self {
             LDPCCode::TC128  => TC128_PARAMS,
             LDPCCode::TC256  => TC256_PARAMS,
@@ -379,32 +379,32 @@ impl LDPCCode {
     }
 
     /// Get the code length (number of codeword bits)
-    pub fn n(self) -> usize {
+    pub const fn n(self) -> usize {
         self.params().n
     }
 
     /// Get the code dimension (number of information bits)
-    pub fn k(self) -> usize {
+    pub const fn k(self) -> usize {
         self.params().k
     }
 
     /// Get the number of punctured bits (parity bits not transmitted)
-    pub fn punctured_bits(self) -> usize {
+    pub const fn punctured_bits(self) -> usize {
         self.params().punctured_bits
     }
 
     /// Get the size of the sub-matrices used to define the parity check matrix
-    pub fn submatrix_size(self) -> usize {
+    pub const fn submatrix_size(self) -> usize {
         self.params().submatrix_size
     }
 
     /// Get the size of the sub-matrices used to define the generator matrix
-    pub fn circulant_size(self) -> usize {
+    pub const fn circulant_size(self) -> usize {
         self.params().circulant_size
     }
 
     /// Get the sum of the parity check matrix (total number of parity check edges)
-    pub fn paritycheck_sum(self) -> u32 {
+    pub const fn paritycheck_sum(self) -> u32 {
         self.params().paritycheck_sum
     }
 
