@@ -17,6 +17,12 @@ use crate::codes::LDPCCode;
 ///
 /// We implement this for u8 (the standard but slow option), and u32 and u64 which give speedups.
 pub trait EncodeInto {
+    /// Given `data` which has k bits of data to transmit,
+    /// encodes the parity and stores it in the `parity` buffer.
+    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self])
+    where
+        Self: Sized;
+
     /// Given `codeword` which has the first k bits set to the data to transmit,
     /// sets the remaining n-k parity bits.
     ///
@@ -33,51 +39,55 @@ pub trait EncodeInto {
 }
 
 impl EncodeInto for u8 {
-    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
         let gc = code.compact_generator();
         let row_len = r/64;
 
-        // Scope the split of codeword into (data, parity)
-        {
-            // Split codeword into data and parity sections and then zero the parity bits
-            let (data, parity) = codeword.split_at_mut(k / 8);
-            for x in parity.iter_mut() { *x = 0; }
+        for x in parity.iter_mut() { *x = 0; }
 
-            // For each rotation of the generator circulants
-            for offset in 0..b {
-                // For each row of circulants
-                for crow in 0..k/b {
-                    // Data bit (row of full generator matrix)
-                    let bit = crow*b + offset;
-                    if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
-                        // If bit is set, XOR the generator constant in
-                        for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
-                            parity[idx*8 + 7] ^= (*circ >>  0) as u8;
-                            parity[idx*8 + 6] ^= (*circ >>  8) as u8;
-                            parity[idx*8 + 5] ^= (*circ >> 16) as u8;
-                            parity[idx*8 + 4] ^= (*circ >> 24) as u8;
-                            parity[idx*8 + 3] ^= (*circ >> 32) as u8;
-                            parity[idx*8 + 2] ^= (*circ >> 40) as u8;
-                            parity[idx*8 + 1] ^= (*circ >> 48) as u8;
-                            parity[idx*8 + 0] ^= (*circ >> 56) as u8;
-                        }
-                    }
-                }
-                // Now simulate the right-rotation of the generator by left-rotating the parity
-                for block in 0..r/b {
-                    let parityblock = &mut parity[block*b/8 .. (block+1)*b/8];
-                    let mut carry = parityblock[0] >> 7;
-                    for x in parityblock.iter_mut().rev() {
-                        let c = *x >> 7;
-                        *x = (*x<<1) | carry;
-                        carry = c;
+        // For each rotation of the generator circulants
+        for offset in 0..b {
+            // For each row of circulants
+            for crow in 0..k/b {
+                // Data bit (row of full generator matrix)
+                let bit = crow*b + offset;
+                if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
+                    // If bit is set, XOR the generator constant in
+                    for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
+                        parity[idx*8 + 7] ^= (*circ >>  0) as u8;
+                        parity[idx*8 + 6] ^= (*circ >>  8) as u8;
+                        parity[idx*8 + 5] ^= (*circ >> 16) as u8;
+                        parity[idx*8 + 4] ^= (*circ >> 24) as u8;
+                        parity[idx*8 + 3] ^= (*circ >> 32) as u8;
+                        parity[idx*8 + 2] ^= (*circ >> 40) as u8;
+                        parity[idx*8 + 1] ^= (*circ >> 48) as u8;
+                        parity[idx*8 + 0] ^= (*circ >> 56) as u8;
                     }
                 }
             }
+            // Now simulate the right-rotation of the generator by left-rotating the parity
+            for block in 0..r/b {
+                let parityblock = &mut parity[block*b/8 .. (block+1)*b/8];
+                let mut carry = parityblock[0] >> 7;
+                for x in parityblock.iter_mut().rev() {
+                    let c = *x >> 7;
+                    *x = (*x<<1) | carry;
+                    carry = c;
+                }
+            }
         }
+    }
+    
+    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+        let k = code.k();
+        
+        // Split codeword into data and parity sections
+        let (data, parity) = codeword.split_at_mut(k / 8);
+
+        Self::encode_parity(code, data, parity);
 
         // Return a &mut [u8] view on the codeword
         codeword
@@ -92,63 +102,67 @@ impl EncodeInto for u8 {
 }
 
 impl EncodeInto for u32 {
-    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
         let gc = code.compact_generator();
-        let row_len = r/64;
+        let row_len = r / 64;
 
-        // Scope the split of codeword into (data, parity)
-        {
-            // Split codeword into data and parity sections and then zero the parity bits
-            let (data, parity) = codeword.split_at_mut(k / 32);
-            for x in parity.iter_mut() { *x = 0; }
+        for x in parity.iter_mut() { *x = 0; }
 
-            // We treat data as a &[u8] so we bit-index it correctly despite endianness
-            let data = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len()*4) };
+        // We treat data as a &[u8] so we bit-index it correctly despite endianness
+        let data = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len()*4) };
 
-            // For each rotation of the generator circulants
-            for offset in 0..b {
-                // For each row of circulants
-                for crow in 0..k/b {
-                    // Data bit (row of full generator matrix)
-                    let bit = crow*b + offset;
-                    if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
-                        // If bit is set, XOR the generator constant in
-                        for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
-                            parity[idx*2 + 1] ^= (*circ >>  0) as u32;
-                            parity[idx*2 + 0] ^= (*circ >> 32) as u32;
-                        }
-                    }
-                }
-                // Now simulate the right-rotation of the generator by left-rotating the parity
-                if b >= 32 {
-                    for block in 0..r/b {
-                        let parityblock = &mut parity[block*b/32 .. (block+1)*b/32];
-                        let mut carry = parityblock[0] >> 31;
-                        for x in parityblock.iter_mut().rev() {
-                            let c = *x >> 31;
-                            *x = (*x<<1) | carry;
-                            carry = c;
-                        }
-                    }
-                } else if b == 16 {
-                    // For small blocks we must rotate inside each parity word instead
-                    for x in parity.iter_mut() {
-                        let block1 = *x & 0xFFFF_0000;
-                        let block2 = *x & 0x0000_FFFF;
-                        *x =   (((block1<<1)|(block1>>15)) & 0xFFFF_0000)
-                             | (((block2<<1)|(block2>>15)) & 0x0000_FFFF);
+        // For each rotation of the generator circulants
+        for offset in 0..b {
+            // For each row of circulants
+            for crow in 0..k/b {
+                // Data bit (row of full generator matrix)
+                let bit = crow*b + offset;
+                if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
+                    // If bit is set, XOR the generator constant in
+                    for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
+                        parity[idx*2 + 1] ^= (*circ >>  0) as u32;
+                        parity[idx*2 + 0] ^= (*circ >> 32) as u32;
                     }
                 }
             }
-
-            // Need to compensate for endianness
-            for x in parity.iter_mut() {
-                *x = x.to_be();
+            // Now simulate the right-rotation of the generator by left-rotating the parity
+            if b >= 32 {
+                for block in 0..r/b {
+                    let parityblock = &mut parity[block*b/32 .. (block+1)*b/32];
+                    let mut carry = parityblock[0] >> 31;
+                    for x in parityblock.iter_mut().rev() {
+                        let c = *x >> 31;
+                        *x = (*x<<1) | carry;
+                        carry = c;
+                    }
+                }
+            } else if b == 16 {
+                // For small blocks we must rotate inside each parity word instead
+                for x in parity.iter_mut() {
+                    let block1 = *x & 0xFFFF_0000;
+                    let block2 = *x & 0x0000_FFFF;
+                    *x =   (((block1<<1)|(block1>>15)) & 0xFFFF_0000)
+                        | (((block2<<1)|(block2>>15)) & 0x0000_FFFF);
+                }
             }
         }
+
+        // Need to compensate for endianness
+        for x in parity.iter_mut() {
+            *x = x.to_be();
+        }
+    }
+    
+    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+        let k = code.k();
+
+        // Split codeword into data and parity sections and then zero the parity bits
+        let (data, parity) = codeword.split_at_mut(k / 32);
+
+        Self::encode_parity(code, data, parity);
 
         // Return a &mut [u8] view on the codeword
         unsafe {
@@ -168,73 +182,76 @@ impl EncodeInto for u32 {
 }
 
 impl EncodeInto for u64 {
-    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
         let gc = code.compact_generator();
         let row_len = r/64;
 
-        // Scope the split of codeword into (data, parity)
-        {
-            // Split codeword into data and parity sections and then zero the parity bits
-            let (data, parity) = codeword.split_at_mut(k / 64);
-            for x in parity.iter_mut() { *x = 0; }
+        for x in parity.iter_mut() { *x = 0; }
 
-            // We treat data as a &[u8] so we bit-index it correctly despite endianness
-            let data = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len()*8) };
+        // We treat data as a &[u8] so we bit-index it correctly despite endianness
+        let data = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len()*8) };
 
-            // For each rotation of the generator circulants
-            for offset in 0..b {
-                // For each row of circulants
-                for crow in 0..k/b {
-                    // Data bit (row of full generator matrix)
-                    let bit = crow*b + offset;
-                    if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
-                        // If bit is set, XOR the generator constant in
-                        for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
-                            parity[idx] ^= *circ;
-                        }
-                    }
-                }
-                // Now simulate the right-rotation of the generator by left-rotating the parity
-                if b >= 64 {
-                    for block in 0..r/b {
-                        let parityblock = &mut parity[block*b/64 .. (block+1)*b/64];
-                        let mut carry = parityblock[0] >> 63;
-                        for x in parityblock.iter_mut().rev() {
-                            let c = *x >> 63;
-                            *x = (*x<<1) | carry;
-                            carry = c;
-                        }
-                    }
-                } else if b == 32 {
-                    // For small blocks we must rotate inside each parity word instead
-                    for x in parity.iter_mut() {
-                        let block1 = *x & 0xFFFFFFFF_00000000;
-                        let block2 = *x & 0x00000000_FFFFFFFF;
-                        *x =   (((block1<<1)|(block1>>31)) & 0xFFFFFFFF_00000000)
-                             | (((block2<<1)|(block2>>31)) & 0x00000000_FFFFFFFF);
-                    }
-                } else if b == 16 {
-                    for x in parity.iter_mut() {
-                        let block1 = *x & 0xFFFF_0000_0000_0000;
-                        let block2 = *x & 0x0000_FFFF_0000_0000;
-                        let block3 = *x & 0x0000_0000_FFFF_0000;
-                        let block4 = *x & 0x0000_0000_0000_FFFF;
-                        *x =   (((block1<<1)|(block1>>15)) & 0xFFFF_0000_0000_0000)
-                             | (((block2<<1)|(block2>>15)) & 0x0000_FFFF_0000_0000)
-                             | (((block3<<1)|(block3>>15)) & 0x0000_0000_FFFF_0000)
-                             | (((block4<<1)|(block4>>15)) & 0x0000_0000_0000_FFFF);
+        // For each rotation of the generator circulants
+        for offset in 0..b {
+            // For each row of circulants
+            for crow in 0..k/b {
+                // Data bit (row of full generator matrix)
+                let bit = crow*b + offset;
+                if data[bit/8] >> (7-(bit%8)) & 1 == 1 {
+                    // If bit is set, XOR the generator constant in
+                    for (idx, circ) in gc[crow*row_len..(crow+1)*row_len].iter().enumerate() {
+                        parity[idx] ^= *circ;
                     }
                 }
             }
-
-            // Need to compensate for endianness
-            for x in parity.iter_mut() {
-                *x = x.to_be();
+            // Now simulate the right-rotation of the generator by left-rotating the parity
+            if b >= 64 {
+                for block in 0..r/b {
+                    let parityblock = &mut parity[block*b/64 .. (block+1)*b/64];
+                    let mut carry = parityblock[0] >> 63;
+                    for x in parityblock.iter_mut().rev() {
+                        let c = *x >> 63;
+                        *x = (*x<<1) | carry;
+                        carry = c;
+                    }
+                }
+            } else if b == 32 {
+                // For small blocks we must rotate inside each parity word instead
+                for x in parity.iter_mut() {
+                    let block1 = *x & 0xFFFFFFFF_00000000;
+                    let block2 = *x & 0x00000000_FFFFFFFF;
+                    *x =   (((block1<<1)|(block1>>31)) & 0xFFFFFFFF_00000000)
+                        | (((block2<<1)|(block2>>31)) & 0x00000000_FFFFFFFF);
+                }
+            } else if b == 16 {
+                for x in parity.iter_mut() {
+                    let block1 = *x & 0xFFFF_0000_0000_0000;
+                    let block2 = *x & 0x0000_FFFF_0000_0000;
+                    let block3 = *x & 0x0000_0000_FFFF_0000;
+                    let block4 = *x & 0x0000_0000_0000_FFFF;
+                    *x =   (((block1<<1)|(block1>>15)) & 0xFFFF_0000_0000_0000)
+                        | (((block2<<1)|(block2>>15)) & 0x0000_FFFF_0000_0000)
+                        | (((block3<<1)|(block3>>15)) & 0x0000_0000_FFFF_0000)
+                        | (((block4<<1)|(block4>>15)) & 0x0000_0000_0000_FFFF);
+                }
             }
         }
+
+        // Need to compensate for endianness
+        for x in parity.iter_mut() {
+            *x = x.to_be();
+        }
+    }
+
+    fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
+        let k = code.k();
+
+        // Split codeword into data and parity sections
+        let (data, parity) = codeword.split_at_mut(k / 64);
+        Self::encode_parity(code, data, parity);
 
         // Return a &mut [u8] view on the codeword
         unsafe {
