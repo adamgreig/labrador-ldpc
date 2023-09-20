@@ -18,7 +18,7 @@ use crate::codes::LDPCCode;
 /// We implement this for u8 (the standard but slow option), and u32 and u64 which give speedups.
 pub trait EncodeInto {
     /// Given `data` which has k bits of data to transmit,
-    /// Encodes the parity and stores it in the `parity` buffer.
+    /// encodes the parity and stores it in the `parity` buffer.
     fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self])
     where
         Self: Sized;
