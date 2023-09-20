@@ -79,7 +79,6 @@ impl EncodeInto for u8 {
                 }
             }
         }
-        
     }
     
     fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
