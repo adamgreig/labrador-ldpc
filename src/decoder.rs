@@ -6,13 +6,13 @@
 //! Please refer to the `decode_ms` and `decode_bf` methods on
 //! [`LDPCCode`](../codes/enum.LDPCCode.html) for more details.
 
-use core::i8;
-use core::i16;
-use core::i32;
 use core::f32;
 use core::f64;
+use core::i16;
+use core::i32;
+use core::i8;
 
-use core::ops::{Add,AddAssign,Neg,Sub};
+use core::ops::{Add, AddAssign, Neg, Sub};
 
 use crate::codes::LDPCCode;
 
@@ -38,84 +38,166 @@ fn fabsf(f: f32) -> f32 {
 ///
 /// Implemented for `i8`, `i16`, `i32`, `f32`, and `f64`.
 pub trait DecodeFrom:
-    Sized + Clone + Copy + PartialEq + PartialOrd
-    + Add + AddAssign + Neg<Output=Self> + Sub<Output=Self>
+    Sized
+    + Clone
+    + Copy
+    + PartialEq
+    + PartialOrd
+    + Add
+    + AddAssign
+    + Neg<Output = Self>
+    + Sub<Output = Self>
 {
     /// 1 in T
-    fn one()            -> Self;
+    fn one() -> Self;
     /// 0 in T
-    fn zero()           -> Self;
+    fn zero() -> Self;
     /// Maximum value T can represent
-    fn maxval()         -> Self;
+    fn maxval() -> Self;
     /// Absolute value of self
-    fn abs(&self)       -> Self;
+    fn abs(&self) -> Self;
     /// Saturating add
     fn saturating_add(&self, other: Self) -> Self;
 }
 
 impl DecodeFrom for i8 {
-    #[inline] fn one()      -> i8 { 1 }
-    #[inline] fn zero()     -> i8 { 0 }
-    #[inline] fn maxval()   -> i8 { i8::MAX }
-    #[inline] fn abs(&self) -> i8 { i8::abs(*self) }
-    #[inline] fn saturating_add(&self, other: Self) -> Self { i8::saturating_add(*self, other) }
+    #[inline]
+    fn one() -> i8 {
+        1
+    }
+    #[inline]
+    fn zero() -> i8 {
+        0
+    }
+    #[inline]
+    fn maxval() -> i8 {
+        i8::MAX
+    }
+    #[inline]
+    fn abs(&self) -> i8 {
+        i8::abs(*self)
+    }
+    #[inline]
+    fn saturating_add(&self, other: Self) -> Self {
+        i8::saturating_add(*self, other)
+    }
 }
 impl DecodeFrom for i16 {
-    #[inline] fn one()      -> i16 { 1 }
-    #[inline] fn zero()     -> i16 { 0 }
-    #[inline] fn maxval()   -> i16 { i16::MAX }
-    #[inline] fn abs(&self) -> i16 { i16::abs(*self) }
-    #[inline] fn saturating_add(&self, other: Self) -> Self { i16::saturating_add(*self, other) }
+    #[inline]
+    fn one() -> i16 {
+        1
+    }
+    #[inline]
+    fn zero() -> i16 {
+        0
+    }
+    #[inline]
+    fn maxval() -> i16 {
+        i16::MAX
+    }
+    #[inline]
+    fn abs(&self) -> i16 {
+        i16::abs(*self)
+    }
+    #[inline]
+    fn saturating_add(&self, other: Self) -> Self {
+        i16::saturating_add(*self, other)
+    }
 }
 impl DecodeFrom for i32 {
-    #[inline] fn one()      -> i32 { 1 }
-    #[inline] fn zero()     -> i32 { 0 }
-    #[inline] fn maxval()   -> i32 { i32::MAX }
-    #[inline] fn abs(&self) -> i32 { i32::abs(*self) }
-    #[inline] fn saturating_add(&self, other: Self) -> Self { i32::saturating_add(*self, other) }
+    #[inline]
+    fn one() -> i32 {
+        1
+    }
+    #[inline]
+    fn zero() -> i32 {
+        0
+    }
+    #[inline]
+    fn maxval() -> i32 {
+        i32::MAX
+    }
+    #[inline]
+    fn abs(&self) -> i32 {
+        i32::abs(*self)
+    }
+    #[inline]
+    fn saturating_add(&self, other: Self) -> Self {
+        i32::saturating_add(*self, other)
+    }
 }
 impl DecodeFrom for f32 {
-    #[inline] fn one()      -> f32 { 1.0 }
-    #[inline] fn zero()     -> f32 { 0.0 }
-    #[inline] fn maxval()   -> f32 { f32::MAX }
-    #[inline] fn abs(&self) -> f32 { fabsf(*self) }
-    #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
+    #[inline]
+    fn one() -> f32 {
+        1.0
+    }
+    #[inline]
+    fn zero() -> f32 {
+        0.0
+    }
+    #[inline]
+    fn maxval() -> f32 {
+        f32::MAX
+    }
+    #[inline]
+    fn abs(&self) -> f32 {
+        fabsf(*self)
+    }
+    #[inline]
+    fn saturating_add(&self, other: Self) -> Self {
+        *self + other
+    }
 }
 impl DecodeFrom for f64 {
-    #[inline] fn one()      -> f64 { 1.0 }
-    #[inline] fn zero()     -> f64 { 0.0 }
-    #[inline] fn maxval()   -> f64 { f64::MAX }
-    #[inline] fn abs(&self) -> f64 { fabs(*self) }
-    #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
+    #[inline]
+    fn one() -> f64 {
+        1.0
+    }
+    #[inline]
+    fn zero() -> f64 {
+        0.0
+    }
+    #[inline]
+    fn maxval() -> f64 {
+        f64::MAX
+    }
+    #[inline]
+    fn abs(&self) -> f64 {
+        fabs(*self)
+    }
+    #[inline]
+    fn saturating_add(&self, other: Self) -> Self {
+        *self + other
+    }
 }
 
 impl LDPCCode {
-
     /// Get the length of [u8] required for the working area of `decode_bf`.
     ///
     /// Equal to n + punctured_bits.
-    pub fn decode_bf_working_len(self) -> usize {
+    pub const fn decode_bf_working_len(self) -> usize {
         self.n() + self.punctured_bits()
     }
 
     /// Get the length of [T] required for the working area of `decode_ms`.
     ///
     /// Equal to 2 * paritycheck_sum + 3*n + 3*punctured_bits - 2*k.
-    pub fn decode_ms_working_len(self) -> usize {
-        2 * self.paritycheck_sum() as usize + 3*self.n() + 3*self.punctured_bits() - 2*self.k()
+    pub const fn decode_ms_working_len(self) -> usize {
+        2 * self.paritycheck_sum() as usize + 3 * self.n() + 3 * self.punctured_bits()
+            - 2 * self.k()
     }
 
     /// Get the length of [u8] required for the working_u8 area of `decode_ms`.
     ///
     /// Equal to (n + punctured_bits - k)/8.
-    pub fn decode_ms_working_u8_len(self) -> usize {
+    pub const fn decode_ms_working_u8_len(self) -> usize {
         (self.n() + self.punctured_bits() - self.k()) / 8
     }
 
     /// Get the length of [u8] required for the output of any decoder.
     ///
     /// Equal to (n+punctured_bits)/8.
-    pub fn output_len(self) -> usize {
+    pub const fn output_len(self) -> usize {
         (self.n() + self.punctured_bits()) / 8
     }
 
@@ -145,9 +227,12 @@ impl LDPCCode {
     /// bit got a majority vote; but they might still be wrong; likewise failure means not every
     /// bit got a vote but many may still have been determined correctly.
     #[allow(clippy::many_single_char_names)]
-    fn decode_erasures(self, codeword: &mut [u8], working: &mut [u8], maxiters: usize)
-        -> (bool, usize)
-    {
+    fn decode_erasures(
+        self,
+        codeword: &mut [u8],
+        working: &mut [u8],
+        maxiters: usize,
+    ) -> (bool, usize) {
         assert_eq!(codeword.len(), self.output_len());
         assert_eq!(working.len(), self.decode_bf_working_len());
 
@@ -164,18 +249,26 @@ impl LDPCCode {
         //   starting at 8 for 0 votes and being incremented and decremented from there.
 
         // Initialse working area: mark all punctured bits as erased
-        for w in &mut working[..n] { *w = 0x00 }
-        for w in &mut working[n..] { *w = 0x10 }
+        for w in &mut working[..n] {
+            *w = 0x00
+        }
+        for w in &mut working[n..] {
+            *w = 0x10
+        }
 
         // Also write all the punctured bits in the codeword to zero
-        for c in &mut codeword[n/8..] { *c = 0x00 }
+        for c in &mut codeword[n / 8..] {
+            *c = 0x00
+        }
 
         // Keep track of how many bits we've fixed
         let mut bits_fixed = 0;
 
         for iter in 0..maxiters {
             // Initialise parity and erasure counts to zero, reset votes, preserve erasure bit
-            for w in &mut working[..] { *w = (*w & 0x10) | 0x08 }
+            for w in &mut working[..] {
+                *w = (*w & 0x10) | 0x08
+            }
 
             // Compute check parity and erasure count
             for (check, var) in self.iter_paritychecks() {
@@ -184,9 +277,9 @@ impl LDPCCode {
                     match working[check] & 0x60 {
                         0x00 => working[check] |= 0x20,
                         0x20 => working[check] |= 0x40,
-                        _    => (),
+                        _ => (),
                     }
-                } else if codeword[var/8] >> (7-(var%8)) & 1 == 1 {
+                } else if codeword[var / 8] >> (7 - (var % 8)) & 1 == 1 {
                     // If var is not erased and this codeword bit is set, update check parity
                     working[check] ^= 0x80;
                 }
@@ -206,10 +299,10 @@ impl LDPCCode {
             }
 
             // Finally fix all bits that are erased and have a majority vote
-            for (var, working) in working[0..(n+p)].iter_mut().enumerate() {
+            for (var, working) in working[0..(n + p)].iter_mut().enumerate() {
                 if *working & 0x10 == 0x10 {
                     if *working & 0x0F > 0x08 {
-                        codeword[var/8] |= 1<<(7-(var%8));
+                        codeword[var / 8] |= 1 << (7 - (var % 8));
                         *working &= !0x10;
                     }
                     bits_fixed += 1;
@@ -218,7 +311,7 @@ impl LDPCCode {
 
             if bits_fixed == p {
                 // Hurray we're done
-                return (true, iter)
+                return (true, iter);
             }
         }
 
@@ -244,15 +337,22 @@ impl LDPCCode {
     ///
     /// Returns `(decoding success, iters)`. For punctured codes, `iters` includes iterations
     /// of the erasure decoding algorithm which is run first.
-    pub fn decode_bf(self, input: &[u8], output: &mut [u8],
-                     working: &mut [u8], maxiters: usize)
-        -> (bool, usize)
-    {
-        assert_eq!(input.len(), self.n()/8, "input.len() != n/8");
+    pub fn decode_bf(
+        self,
+        input: &[u8],
+        output: &mut [u8],
+        working: &mut [u8],
+        maxiters: usize,
+    ) -> (bool, usize) {
+        assert_eq!(input.len(), self.n() / 8, "input.len() != n/8");
         assert_eq!(output.len(), self.output_len(), "output.len != (n+p)/8");
-        assert_eq!(working.len(), self.decode_bf_working_len(), "working.len() incorrect");
+        assert_eq!(
+            working.len(),
+            self.decode_bf_working_len(),
+            "working.len() incorrect"
+        );
 
-        output[..self.n()/8].copy_from_slice(input);
+        output[..self.n() / 8].copy_from_slice(input);
 
         // For punctured codes we must first try and fix all the punctured bits.
         // We run them through an erasure decoding algorithm and record how many iterations
@@ -260,18 +360,22 @@ impl LDPCCode {
         let erasure_iters = if self.punctured_bits() > 0 {
             let (_, iters) = self.decode_erasures(output, working, maxiters);
             iters
-        } else { 0 };
+        } else {
+            0
+        };
 
         // Working area: we use the top bit of the first k bytes to store that parity check,
         // and the remaining 7 bits of the first n+p bytes to store violation count for that var.
 
         for iter in 0..maxiters {
             // Zero out violation counts
-            for v in &mut working[..] { *v = 0 }
+            for v in &mut working[..] {
+                *v = 0
+            }
 
             // Calculate the parity of each parity check
             for (check, var) in self.iter_paritychecks() {
-                if output[var/8] >> (7-(var%8)) & 1 == 1 {
+                if output[var / 8] >> (7 - (var % 8)) & 1 == 1 {
                     working[check] ^= 0x80;
                 }
             }
@@ -295,7 +399,7 @@ impl LDPCCode {
                 // Flip all the bits that have the maximum number of violations
                 for (var, violations) in working.iter().enumerate() {
                     if *violations & 0x7F == max_violations {
-                        output[var/8] ^= 1<<(7-(var%8));
+                        output[var / 8] ^= 1 << (7 - (var % 8));
                     }
                 }
             }
@@ -347,20 +451,31 @@ impl LDPCCode {
     /// exact value you give the LLRs, but in the interests of avoiding saturation you may as
     /// well pick +-1 in any unit (and you may as well use i8 since the additional range will
     /// not be of benefit).
-    #[allow(clippy::cognitive_complexity,clippy::many_single_char_names)]
-    pub fn decode_ms<T: DecodeFrom>(self, llrs: &[T], output: &mut [u8],
-                                    working: &mut [T], working_u8: &mut [u8],
-                                    maxiters: usize)
-        -> (bool, usize)
-    {
+    #[allow(clippy::cognitive_complexity, clippy::many_single_char_names)]
+    pub fn decode_ms<T: DecodeFrom>(
+        self,
+        llrs: &[T],
+        output: &mut [u8],
+        working: &mut [T],
+        working_u8: &mut [u8],
+        maxiters: usize,
+    ) -> (bool, usize) {
         let n = self.n();
         let k = self.k();
         let p = self.punctured_bits();
 
         assert_eq!(llrs.len(), n, "llrs.len() != n");
         assert_eq!(output.len(), self.output_len(), "output.len() != (n+p)/8");
-        assert_eq!(working.len(), self.decode_ms_working_len(), "working.len() incorrect");
-        assert_eq!(working_u8.len(), self.decode_ms_working_u8_len(), "working_u8 != (n+p-k)/8");
+        assert_eq!(
+            working.len(),
+            self.decode_ms_working_len(),
+            "working.len() incorrect"
+        );
+        assert_eq!(
+            working_u8.len(),
+            self.decode_ms_working_u8_len(),
+            "working_u8 != (n+p-k)/8"
+        );
 
         // Rename output to parities as we'll use it to keep track of the parity bits until the end
         let parities = output;
@@ -369,16 +484,20 @@ impl LDPCCode {
         let ui_sgns = working_u8;
 
         // Zero the working area and split it up
-        for w in &mut working[..] { *w = T::zero() }
-        let (u, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
-        let (v, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
-        let (va, working)       = working.split_at_mut(n + p);
-        let (ui_min1, ui_min2)  = working.split_at_mut(n + p - k);
+        for w in &mut working[..] {
+            *w = T::zero()
+        }
+        let (u, working) = working.split_at_mut(self.paritycheck_sum() as usize);
+        let (v, working) = working.split_at_mut(self.paritycheck_sum() as usize);
+        let (va, working) = working.split_at_mut(n + p);
+        let (ui_min1, ui_min2) = working.split_at_mut(n + p - k);
 
         for iter in 0..maxiters {
             // Initialise the marginals to the input LLRs (and to 0 for punctured bits)
             va[..llrs.len()].copy_from_slice(llrs);
-            for x in &mut va[llrs.len()..] { *x = T::zero() }
+            for x in &mut va[llrs.len()..] {
+                *x = T::zero()
+            }
 
             // You'd think .enumerate() would be sensible, but actually it prevents
             // inlining the iterator's next() method, which leads to a big performance hit.
@@ -390,7 +509,7 @@ impl LDPCCode {
                 } else {
                     u[idx] = ui_min1[check];
                 }
-                if ui_sgns[check/8] >> (check%8) & 1 == 1 {
+                if ui_sgns[check / 8] >> (check % 8) & 1 == 1 {
                     u[idx] = -u[idx];
                 }
                 if v[idx] < T::zero() {
@@ -404,10 +523,18 @@ impl LDPCCode {
                 idx += 1;
             }
 
-            for x in &mut ui_min1[..] { *x = T::maxval() }
-            for x in &mut ui_min2[..] { *x = T::maxval() }
-            for x in &mut ui_sgns[..] { *x = 0 }
-            for x in &mut parities[..] { *x = 0 }
+            for x in &mut ui_min1[..] {
+                *x = T::maxval()
+            }
+            for x in &mut ui_min2[..] {
+                *x = T::maxval()
+            }
+            for x in &mut ui_sgns[..] {
+                *x = 0
+            }
+            for x in &mut parities[..] {
+                *x = 0
+            }
             idx = 0;
             for (check, var) in self.iter_paritychecks() {
                 // Work out messages to this parity check
@@ -428,12 +555,12 @@ impl LDPCCode {
 
                 // Accumulate signs
                 if v[idx] < T::zero() {
-                    ui_sgns[check/8] ^= 1<<(check%8);
+                    ui_sgns[check / 8] ^= 1 << (check % 8);
                 }
 
                 // Accumulate parity
                 if va[var] <= T::zero() {
-                    parities[check/8] ^= 1<<(check%8);
+                    parities[check / 8] ^= 1 << (check % 8);
                 }
 
                 idx += 1;
@@ -443,10 +570,12 @@ impl LDPCCode {
             if *parities.iter().max().unwrap() == 0 {
                 // Hard decode marginals into the output
                 let output = parities;
-                for o in &mut output[..] { *o = 0 }
-                for (var, &va) in va[0..(n+p)].iter().enumerate() {
+                for o in &mut output[..] {
+                    *o = 0
+                }
+                for (var, &va) in va[0..(n + p)].iter().enumerate() {
                     if va <= T::zero() {
-                        output[var/8] |= 1 << (7 - (var%8));
+                        output[var / 8] |= 1 << (7 - (var % 8));
                     }
                 }
                 return (true, iter);
@@ -455,10 +584,12 @@ impl LDPCCode {
 
         // If we failed to find a codeword, at least hard decode the marginals into the output
         let output = parities;
-        for o in &mut output[..] { *o = 0 }
-        for (var, &va) in va[0..(n+p)].iter().enumerate() {
+        for o in &mut output[..] {
+            *o = 0
+        }
+        for (var, &va) in va[0..(n + p)].iter().enumerate() {
             if va <= T::zero() {
-                output[var/8] |= 1 << (7 - (var%8));
+                output[var / 8] |= 1 << (7 - (var % 8));
             }
         }
         (false, maxiters)
@@ -472,12 +603,16 @@ impl LDPCCode {
     ///
     /// `input` must be n/8 long, `llrs` must be n long.
     pub fn hard_to_llrs<T: DecodeFrom>(self, input: &[u8], llrs: &mut [T]) {
-        assert_eq!(input.len(), self.n()/8, "input.len() != n/8");
+        assert_eq!(input.len(), self.n() / 8, "input.len() != n/8");
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
         let llr = -T::one();
         for (idx, byte) in input.iter().enumerate() {
             for i in 0..8 {
-                llrs[idx*8 + i] = if (byte >> (7-i)) & 1 == 1 { llr } else { -llr };
+                llrs[idx * 8 + i] = if (byte >> (7 - i)) & 1 == 1 {
+                    llr
+                } else {
+                    -llr
+                };
             }
         }
     }
@@ -487,13 +622,15 @@ impl LDPCCode {
     /// `llrs` must be n long, `output` must be n/8 long.
     pub fn llrs_to_hard<T: DecodeFrom>(self, llrs: &[T], output: &mut [u8]) {
         assert_eq!(llrs.len(), self.n(), "llrs.len() != n");
-        assert_eq!(output.len(), self.n()/8, "output.len() != n/8");
+        assert_eq!(output.len(), self.n() / 8, "output.len() != n/8");
 
-        for o in &mut output[..] { *o = 0 }
+        for o in &mut output[..] {
+            *o = 0
+        }
 
         for (i, llr) in llrs.iter().enumerate() {
             if *llr < T::zero() {
-                output[i/8] |= 1 << (7 - (i%8));
+                output[i / 8] |= 1 << (7 - (i % 8));
             }
         }
     }
@@ -503,26 +640,43 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use crate::codes::{LDPCCode, CodeParams,
-                       TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                       TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                       TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS};
+    use crate::codes::{
+        CodeParams, LDPCCode, TC128_PARAMS, TC256_PARAMS, TC512_PARAMS, TM1280_PARAMS,
+        TM1536_PARAMS, TM2048_PARAMS, TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
+    };
 
-    const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
-                                   LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
-                                   LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
+    const CODES: [LDPCCode; 9] = [
+        LDPCCode::TC128,
+        LDPCCode::TC256,
+        LDPCCode::TC512,
+        LDPCCode::TM1280,
+        LDPCCode::TM1536,
+        LDPCCode::TM2048,
+        LDPCCode::TM5120,
+        LDPCCode::TM6144,
+        LDPCCode::TM8192,
     ];
 
-    const PARAMS: [CodeParams; 9] = [TC128_PARAMS,  TC256_PARAMS,  TC512_PARAMS,
-                                     TM1280_PARAMS, TM1536_PARAMS, TM2048_PARAMS,
-                                     TM5120_PARAMS, TM6144_PARAMS, TM8192_PARAMS,
+    const PARAMS: [CodeParams; 9] = [
+        TC128_PARAMS,
+        TC256_PARAMS,
+        TC512_PARAMS,
+        TM1280_PARAMS,
+        TM1536_PARAMS,
+        TM2048_PARAMS,
+        TM5120_PARAMS,
+        TM6144_PARAMS,
+        TM8192_PARAMS,
     ];
 
     #[test]
     fn test_decode_ms_working_len() {
         for (code, param) in CODES.iter().zip(PARAMS.iter()) {
             assert_eq!(code.decode_ms_working_len(), param.decode_ms_working_len);
-            assert_eq!(code.decode_ms_working_u8_len(), param.decode_ms_working_u8_len);
+            assert_eq!(
+                code.decode_ms_working_u8_len(),
+                param.decode_ms_working_u8_len
+            );
         }
     }
 
@@ -543,28 +697,26 @@ mod tests {
     #[test]
     fn test_hard_to_llrs() {
         let code = LDPCCode::TC128;
-        let hard = vec![255, 254, 253, 252, 251, 250, 249, 248,
-                        203, 102, 103, 120, 107,  30, 157, 169];
+        let hard = vec![
+            255, 254, 253, 252, 251, 250, 249, 248, 203, 102, 103, 120, 107, 30, 157, 169,
+        ];
         let mut llrs = vec![0f32; code.n()];
         let llr = -1.0;
         code.hard_to_llrs(&hard, &mut llrs);
-        assert_eq!(llrs, vec![
-             llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
-             llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
-             llr,  llr,  llr,  llr,  llr,  llr, -llr,  llr,
-             llr,  llr,  llr,  llr,  llr,  llr, -llr, -llr,
-             llr,  llr,  llr,  llr,  llr, -llr,  llr,  llr,
-             llr,  llr,  llr,  llr,  llr, -llr,  llr, -llr,
-             llr,  llr,  llr,  llr,  llr, -llr, -llr,  llr,
-             llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
-             llr,  llr, -llr, -llr,  llr, -llr,  llr,  llr,
-            -llr,  llr,  llr, -llr, -llr,  llr,  llr, -llr,
-            -llr,  llr,  llr, -llr, -llr,  llr,  llr,  llr,
-            -llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
-            -llr,  llr,  llr, -llr,  llr, -llr,  llr,  llr,
-            -llr, -llr, -llr,  llr,  llr,  llr,  llr, -llr,
-             llr, -llr, -llr,  llr,  llr,  llr, -llr,  llr,
-             llr, -llr,  llr, -llr,  llr, -llr, -llr,  llr]);
+        assert_eq!(
+            llrs,
+            vec![
+                llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, -llr,
+                llr, llr, llr, llr, llr, llr, -llr, llr, llr, llr, llr, llr, llr, llr, -llr, -llr,
+                llr, llr, llr, llr, llr, -llr, llr, llr, llr, llr, llr, llr, llr, -llr, llr, -llr,
+                llr, llr, llr, llr, llr, -llr, -llr, llr, llr, llr, llr, llr, llr, -llr, -llr,
+                -llr, llr, llr, -llr, -llr, llr, -llr, llr, llr, -llr, llr, llr, -llr, -llr, llr,
+                llr, -llr, -llr, llr, llr, -llr, -llr, llr, llr, llr, -llr, llr, llr, llr, llr,
+                -llr, -llr, -llr, -llr, llr, llr, -llr, llr, -llr, llr, llr, -llr, -llr, -llr, llr,
+                llr, llr, llr, -llr, llr, -llr, -llr, llr, llr, llr, -llr, llr, llr, -llr, llr,
+                -llr, llr, -llr, -llr, llr
+            ]
+        );
     }
 
     #[test]
@@ -572,26 +724,21 @@ mod tests {
         let code = LDPCCode::TC128;
         let llr = -1.0;
         let llrs = vec![
-             llr,  llr,  llr,  llr,  llr,  llr,  llr,  llr,
-             llr,  llr,  llr,  llr,  llr,  llr,  llr, -llr,
-             llr,  llr,  llr,  llr,  llr,  llr, -llr,  llr,
-             llr,  llr,  llr,  llr,  llr,  llr, -llr, -llr,
-             llr,  llr,  llr,  llr,  llr, -llr,  llr,  llr,
-             llr,  llr,  llr,  llr,  llr, -llr,  llr, -llr,
-             llr,  llr,  llr,  llr,  llr, -llr, -llr,  llr,
-             llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
-             llr,  llr, -llr, -llr,  llr, -llr,  llr,  llr,
-            -llr,  llr,  llr, -llr, -llr,  llr,  llr, -llr,
-            -llr,  llr,  llr, -llr, -llr,  llr,  llr,  llr,
-            -llr,  llr,  llr,  llr,  llr, -llr, -llr, -llr,
-            -llr,  llr,  llr, -llr,  llr, -llr,  llr,  llr,
-            -llr, -llr, -llr,  llr,  llr,  llr,  llr, -llr,
-             llr, -llr, -llr,  llr,  llr,  llr, -llr,  llr,
-             llr, -llr,  llr, -llr,  llr, -llr, -llr,  llr];
-        let mut hard = vec![0u8; code.n()/8];
+            llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, llr, -llr, llr,
+            llr, llr, llr, llr, llr, -llr, llr, llr, llr, llr, llr, llr, llr, -llr, -llr, llr, llr,
+            llr, llr, llr, -llr, llr, llr, llr, llr, llr, llr, llr, -llr, llr, -llr, llr, llr, llr,
+            llr, llr, -llr, -llr, llr, llr, llr, llr, llr, llr, -llr, -llr, -llr, llr, llr, -llr,
+            -llr, llr, -llr, llr, llr, -llr, llr, llr, -llr, -llr, llr, llr, -llr, -llr, llr, llr,
+            -llr, -llr, llr, llr, llr, -llr, llr, llr, llr, llr, -llr, -llr, -llr, -llr, llr, llr,
+            -llr, llr, -llr, llr, llr, -llr, -llr, -llr, llr, llr, llr, llr, -llr, llr, -llr, -llr,
+            llr, llr, llr, -llr, llr, llr, -llr, llr, -llr, llr, -llr, -llr, llr,
+        ];
+        let mut hard = vec![0u8; code.n() / 8];
         code.llrs_to_hard(&llrs, &mut hard);
-        assert_eq!(hard, vec![255, 254, 253, 252, 251, 250, 249, 248,
-                              203, 102, 103, 120, 107,  30, 157, 169]);
+        assert_eq!(
+            hard,
+            vec![255, 254, 253, 252, 251, 250, 249, 248, 203, 102, 103, 120, 107, 30, 157, 169]
+        );
     }
 
     #[test]
@@ -603,8 +750,8 @@ mod tests {
             }
 
             // Encode a codeword
-            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
-            let mut txcode = vec![0u8; code.n()/8];
+            let txdata: Vec<u8> = (0..code.k() / 8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n() / 8];
             code.copy_encode(&txdata, &mut txcode);
 
             // Allocate working area
@@ -626,8 +773,13 @@ mod tests {
             let mut working_u8_ms = vec![0u8; code.decode_ms_working_u8_len()];
             let mut output_ms = vec![0u8; code.output_len()];
             code.hard_to_llrs(&txcode, &mut llrs);
-            let (success, _) = code.decode_ms(&llrs, &mut output_ms, &mut working_ms,
-                                              &mut working_u8_ms, 50);
+            let (success, _) = code.decode_ms(
+                &llrs,
+                &mut output_ms,
+                &mut working_ms,
+                &mut working_u8_ms,
+                50,
+            );
 
             assert!(success);
             assert_eq!(output, output_ms);
@@ -638,13 +790,13 @@ mod tests {
     fn test_decode_bf() {
         for code in &CODES {
             // Make up some TX data
-            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
-            let mut txcode = vec![0u8; code.n()/8];
+            let txdata: Vec<u8> = (0..code.k() / 8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n() / 8];
             code.copy_encode(&txdata, &mut txcode);
 
             // Copy it and corrupt some bits
             let mut rxcode = txcode.clone();
-            rxcode[0] ^= 1<<7 | 1<<5 | 1<<3;
+            rxcode[0] ^= 1 << 7 | 1 << 5 | 1 << 3;
 
             // Allocate working area and output area
             let mut working = vec![0u8; code.decode_bf_working_len()];
@@ -656,19 +808,18 @@ mod tests {
             assert!(success);
             assert_eq!(&txcode[..], &output[..txcode.len()]);
         }
-
     }
     #[test]
     fn test_decode_ms() {
         for code in &CODES {
             // Make up a TX codeword
-            let txdata: Vec<u8> = (0..code.k()/8).map(|x| x as u8).collect();
-            let mut txcode = vec![0u8; code.n()/8];
+            let txdata: Vec<u8> = (0..code.k() / 8).map(|x| x as u8).collect();
+            let mut txcode = vec![0u8; code.n() / 8];
             code.copy_encode(&txdata, &mut txcode);
 
             // Copy it and corrupt some bits
             let mut rxcode = txcode.clone();
-            rxcode[0] ^= 1<<7 | 1<<5 | 1<<3;
+            rxcode[0] ^= 1 << 7 | 1 << 5 | 1 << 3;
 
             // Convert the hard data to LLRs
             let mut llrs = vec![0i8; code.n()];
@@ -676,12 +827,12 @@ mod tests {
 
             // Allocate working area and output area
             let mut working = vec![0i8; code.decode_ms_working_len()];
-            let mut working_u8 = vec![0u8; code.output_len() - code.k()/8];
+            let mut working_u8 = vec![0u8; code.output_len() - code.k() / 8];
             let mut output = vec![0u8; code.output_len()];
 
             // Run decoder
-            let (success, _) = code.decode_ms(&llrs, &mut output, &mut working,
-                                              &mut working_u8, 50);
+            let (success, _) =
+                code.decode_ms(&llrs, &mut output, &mut working, &mut working_u8, 50);
 
             assert!(success);
             assert_eq!(&txcode[..], &output[..txcode.len()]);
