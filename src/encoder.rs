@@ -19,7 +19,7 @@ use crate::codes::LDPCCode;
 pub trait EncodeInto {
     /// Given `data` which has k bits of data to transmit,
     /// encodes the parity and stores it in the `parity` buffer.
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self])
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self])
     where
         Self: Sized;
 
@@ -39,7 +39,7 @@ pub trait EncodeInto {
 }
 
 impl EncodeInto for u8 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
@@ -105,7 +105,7 @@ impl EncodeInto for u8 {
 }
 
 impl EncodeInto for u32 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
@@ -187,7 +187,7 @@ impl EncodeInto for u32 {
 }
 
 impl EncodeInto for u64 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
