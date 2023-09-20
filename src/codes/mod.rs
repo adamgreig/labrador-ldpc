@@ -5,7 +5,7 @@
 //! load their generator and parity check matrices.
 
 // We have a bunch of expressions with +0 for clarity of where the 0 comes from
-#![allow(clippy::identity_op,clippy::erasing_op)]
+#![allow(clippy::identity_op, clippy::erasing_op)]
 
 /// This module contains the constants representing the generator matrices.
 ///
@@ -35,7 +35,7 @@ mod compact_parity_checks;
 /// For code parameters see the [`CodeParams`](struct.CodeParams.html) structs also in this module:
 /// [`TC128_PARAMS`](constant.TC128_PARAMS.html) etc.
 #[repr(C)]
-#[derive(Copy,Clone,Debug,Eq,PartialEq,Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum LDPCCode {
     /// n=128 k=64 r=1/2
     TC128 = 0,
@@ -87,7 +87,6 @@ pub struct CodeParams {
 
     // Almost everything below here can probably vanish once const fn is available,
     // as they can all be represented as simple equations of the parameters above.
-
     /// Length of the working area required for the bit-flipping decoder.
     /// Equal to n+punctured_bits.
     pub decode_bf_working_len: usize,
@@ -110,14 +109,14 @@ pub const TC128_PARAMS: CodeParams = CodeParams {
     n: 128,
     k: 64,
     punctured_bits: 0,
-    submatrix_size: 128/8,
-    circulant_size: 128/8,
+    submatrix_size: 128 / 8,
+    circulant_size: 128 / 8,
     paritycheck_sum: 512,
 
     decode_bf_working_len: 128 + 0,
-    decode_ms_working_len: 2*512 + 3*128 + 3*0 - 2*64,
-    decode_ms_working_u8_len: (128 + 0 - 64)/8,
-    output_len: 128/8,
+    decode_ms_working_len: 2 * 512 + 3 * 128 + 3 * 0 - 2 * 64,
+    decode_ms_working_u8_len: (128 + 0 - 64) / 8,
+    output_len: 128 / 8,
 };
 
 /// Code parameters for the TC256 code
@@ -125,14 +124,14 @@ pub const TC256_PARAMS: CodeParams = CodeParams {
     n: 256,
     k: 128,
     punctured_bits: 0,
-    submatrix_size: 256/8,
-    circulant_size: 256/8,
+    submatrix_size: 256 / 8,
+    circulant_size: 256 / 8,
     paritycheck_sum: 1024,
 
     decode_bf_working_len: 256 + 0,
-    decode_ms_working_len: 2*1024 + 3*256 + 3*0 - 2*128,
-    decode_ms_working_u8_len: (256 + 0 - 128)/8,
-    output_len: 256/8,
+    decode_ms_working_len: 2 * 1024 + 3 * 256 + 3 * 0 - 2 * 128,
+    decode_ms_working_u8_len: (256 + 0 - 128) / 8,
+    output_len: 256 / 8,
 };
 
 /// Code parameters for the TC512 code
@@ -140,14 +139,14 @@ pub const TC512_PARAMS: CodeParams = CodeParams {
     n: 512,
     k: 256,
     punctured_bits: 0,
-    submatrix_size: 512/8,
-    circulant_size: 512/8,
+    submatrix_size: 512 / 8,
+    circulant_size: 512 / 8,
     paritycheck_sum: 2048,
 
     decode_bf_working_len: 512 + 0,
-    decode_ms_working_len: 2*2048 + 3*512 + 3*0 - 2*256,
-    decode_ms_working_u8_len: (512 + 0 - 256)/8,
-    output_len: 512/8,
+    decode_ms_working_len: 2 * 2048 + 3 * 512 + 3 * 0 - 2 * 256,
+    decode_ms_working_u8_len: (512 + 0 - 256) / 8,
+    output_len: 512 / 8,
 };
 
 /// Code parameters for the TM1280 code
@@ -156,13 +155,13 @@ pub const TM1280_PARAMS: CodeParams = CodeParams {
     k: 1024,
     punctured_bits: 128,
     submatrix_size: 128,
-    circulant_size: 128/4,
+    circulant_size: 128 / 4,
     paritycheck_sum: 4992,
 
     decode_bf_working_len: 1280 + 128,
-    decode_ms_working_len: 2*4992 + 3*1280 + 3*128 - 2*1024,
-    decode_ms_working_u8_len: (1280 + 128 - 1024)/8,
-    output_len: (1280 + 128)/8,
+    decode_ms_working_len: 2 * 4992 + 3 * 1280 + 3 * 128 - 2 * 1024,
+    decode_ms_working_u8_len: (1280 + 128 - 1024) / 8,
+    output_len: (1280 + 128) / 8,
 };
 
 /// Code parameters for the TM1536 code
@@ -171,13 +170,13 @@ pub const TM1536_PARAMS: CodeParams = CodeParams {
     k: 1024,
     punctured_bits: 256,
     submatrix_size: 256,
-    circulant_size: 256/4,
+    circulant_size: 256 / 4,
     paritycheck_sum: 5888,
 
     decode_bf_working_len: 1536 + 256,
-    decode_ms_working_len: 2*5888 + 3*1536 + 3*256 - 2*1024,
-    decode_ms_working_u8_len: (1536 + 256 - 1024)/8,
-    output_len: (1536 + 256)/8,
+    decode_ms_working_len: 2 * 5888 + 3 * 1536 + 3 * 256 - 2 * 1024,
+    decode_ms_working_u8_len: (1536 + 256 - 1024) / 8,
+    output_len: (1536 + 256) / 8,
 };
 
 /// Code parameters for the TM2048 code
@@ -186,13 +185,13 @@ pub const TM2048_PARAMS: CodeParams = CodeParams {
     k: 1024,
     punctured_bits: 512,
     submatrix_size: 512,
-    circulant_size: 512/4,
+    circulant_size: 512 / 4,
     paritycheck_sum: 7680,
 
     decode_bf_working_len: 2048 + 512,
-    decode_ms_working_len: 2*7680 + 3*2048 + 3*512 - 2*1024,
-    decode_ms_working_u8_len: (2048 + 512 - 1024)/8,
-    output_len: (2048 + 512)/8,
+    decode_ms_working_len: 2 * 7680 + 3 * 2048 + 3 * 512 - 2 * 1024,
+    decode_ms_working_u8_len: (2048 + 512 - 1024) / 8,
+    output_len: (2048 + 512) / 8,
 };
 
 /// Code parameters for the TM5120 code
@@ -201,13 +200,13 @@ pub const TM5120_PARAMS: CodeParams = CodeParams {
     k: 4096,
     punctured_bits: 512,
     submatrix_size: 512,
-    circulant_size: 512/4,
+    circulant_size: 512 / 4,
     paritycheck_sum: 19968,
 
     decode_bf_working_len: 5120 + 512,
-    decode_ms_working_len: 2*19968 + 3*5120 + 3*512 - 2*4096,
-    decode_ms_working_u8_len: (5120 + 512 - 4096)/8,
-    output_len: (5120 + 512)/8,
+    decode_ms_working_len: 2 * 19968 + 3 * 5120 + 3 * 512 - 2 * 4096,
+    decode_ms_working_u8_len: (5120 + 512 - 4096) / 8,
+    output_len: (5120 + 512) / 8,
 };
 
 /// Code parameters for the TM6144 code
@@ -216,13 +215,13 @@ pub const TM6144_PARAMS: CodeParams = CodeParams {
     k: 4096,
     punctured_bits: 1024,
     submatrix_size: 1024,
-    circulant_size: 1024/4,
+    circulant_size: 1024 / 4,
     paritycheck_sum: 23552,
 
     decode_bf_working_len: 6144 + 1024,
-    decode_ms_working_len: 2*23552 + 3*6144 + 3*1024 - 2*4096,
-    decode_ms_working_u8_len: (6144 + 1024 - 4096)/8,
-    output_len: (6144 + 1024)/8,
+    decode_ms_working_len: 2 * 23552 + 3 * 6144 + 3 * 1024 - 2 * 4096,
+    decode_ms_working_u8_len: (6144 + 1024 - 4096) / 8,
+    output_len: (6144 + 1024) / 8,
 };
 
 /// Code parameters for the TM8192 code
@@ -231,13 +230,13 @@ pub const TM8192_PARAMS: CodeParams = CodeParams {
     k: 4096,
     punctured_bits: 2048,
     submatrix_size: 2048,
-    circulant_size: 2048/4,
+    circulant_size: 2048 / 4,
     paritycheck_sum: 30720,
 
     decode_bf_working_len: 8192 + 2048,
-    decode_ms_working_len: 2*30720 + 3*8192 + 3*2048 - 2*4096,
-    decode_ms_working_u8_len: (8192 + 2048 - 4096)/8,
-    output_len: (8192 + 2048)/8,
+    decode_ms_working_len: 2 * 30720 + 3 * 8192 + 3 * 2048 - 2 * 4096,
+    decode_ms_working_u8_len: (8192 + 2048 - 4096) / 8,
+    output_len: (8192 + 2048) / 8,
 };
 
 /// Iterator over a code's parity check matrix.
@@ -251,9 +250,9 @@ pub struct ParityIter {
     phi: &'static [[u16; 26]; 4],
     prototype: &'static [[[u8; 11]; 4]; 3],
     m: usize,
-    logmd4: usize,  // log2(M/4), used to multiply and divide by M/4
-    modm: usize,    // the bitmask to AND with to accomplish "mod M", equals m-1
-    modmd4: usize,  // the bitmask to AND with to accomplish "mod M/4", equals (m/4)-1
+    logmd4: usize, // log2(M/4), used to multiply and divide by M/4
+    modm: usize,   // the bitmask to AND with to accomplish "mod M", equals m-1
+    modmd4: usize, // the bitmask to AND with to accomplish "mod M/4", equals (m/4)-1
     rowidx: usize,
     colidx: usize,
     sub_mat_idx: usize,
@@ -302,25 +301,30 @@ impl Iterator for ParityIter {
                         // Weirdly doing this & operation every loop is faster than doing it just
                         // when we update self.sub_mat. Presumably the hint helps it match.
                         match self.sub_mat & (HP | HI) {
-                            HI => { // Identity matrix with a right-shift
+                            HI => {
+                                // Identity matrix with a right-shift
                                 let chk = self.rowidx * self.m + self.check;
                                 let var = self.colidx * self.m
-                                          + ((self.check + self.sub_mat_val) & self.modm);
+                                    + ((self.check + self.sub_mat_val) & self.modm);
                                 self.check += 1;
                                 return Some((chk, var));
-                            },
-                            HP => { // Permutation matrix using theta and phi lookup tables
-                                let pi =
-                                    (((THETA_K[self.sub_mat_val] as usize +
-                                       (self.check>>self.logmd4)) % 4) << self.logmd4)
-                                    + ((self.phi[self.check>>self.logmd4][self.sub_mat_val]
-                                        as usize + self.check) & self.modmd4);
+                            }
+                            HP => {
+                                // Permutation matrix using theta and phi lookup tables
+                                let pi = (((THETA_K[self.sub_mat_val] as usize
+                                    + (self.check >> self.logmd4))
+                                    % 4)
+                                    << self.logmd4)
+                                    + ((self.phi[self.check >> self.logmd4][self.sub_mat_val]
+                                        as usize
+                                        + self.check)
+                                        & self.modmd4);
                                 let chk = self.rowidx * self.m + self.check;
                                 let var = self.colidx * self.m + pi;
                                 self.check += 1;
                                 return Some((chk, var));
-                            },
-                            _  => ()
+                            }
+                            _ => (),
                         }
                     }
 
@@ -364,11 +368,11 @@ impl Iterator for ParityIter {
 
 impl LDPCCode {
     /// Get the code parameters for a specific LDPC code
-    pub fn params(self) -> CodeParams {
+    pub const fn params(self) -> CodeParams {
         match self {
-            LDPCCode::TC128  => TC128_PARAMS,
-            LDPCCode::TC256  => TC256_PARAMS,
-            LDPCCode::TC512  => TC512_PARAMS,
+            LDPCCode::TC128 => TC128_PARAMS,
+            LDPCCode::TC256 => TC256_PARAMS,
+            LDPCCode::TC512 => TC512_PARAMS,
             LDPCCode::TM1280 => TM1280_PARAMS,
             LDPCCode::TM1536 => TM1536_PARAMS,
             LDPCCode::TM2048 => TM2048_PARAMS,
@@ -379,41 +383,41 @@ impl LDPCCode {
     }
 
     /// Get the code length (number of codeword bits)
-    pub fn n(self) -> usize {
+    pub const fn n(self) -> usize {
         self.params().n
     }
 
     /// Get the code dimension (number of information bits)
-    pub fn k(self) -> usize {
+    pub const fn k(self) -> usize {
         self.params().k
     }
 
     /// Get the number of punctured bits (parity bits not transmitted)
-    pub fn punctured_bits(self) -> usize {
+    pub const fn punctured_bits(self) -> usize {
         self.params().punctured_bits
     }
 
     /// Get the size of the sub-matrices used to define the parity check matrix
-    pub fn submatrix_size(self) -> usize {
+    pub const fn submatrix_size(self) -> usize {
         self.params().submatrix_size
     }
 
     /// Get the size of the sub-matrices used to define the generator matrix
-    pub fn circulant_size(self) -> usize {
+    pub const fn circulant_size(self) -> usize {
         self.params().circulant_size
     }
 
     /// Get the sum of the parity check matrix (total number of parity check edges)
-    pub fn paritycheck_sum(self) -> u32 {
+    pub const fn paritycheck_sum(self) -> u32 {
         self.params().paritycheck_sum
     }
 
     /// Get the reference to the compact generator matrix for this code
     pub fn compact_generator(self) -> &'static [u64] {
         match self {
-            LDPCCode::TC128  => &compact_generators::TC128_G,
-            LDPCCode::TC256  => &compact_generators::TC256_G,
-            LDPCCode::TC512  => &compact_generators::TC512_G,
+            LDPCCode::TC128 => &compact_generators::TC128_G,
+            LDPCCode::TC256 => &compact_generators::TC256_G,
+            LDPCCode::TC512 => &compact_generators::TC512_G,
             LDPCCode::TM1280 => &compact_generators::TM1280_G,
             LDPCCode::TM1536 => &compact_generators::TM1536_G,
             LDPCCode::TM2048 => &compact_generators::TM2048_G,
@@ -434,9 +438,13 @@ impl LDPCCode {
     /// row and column in the parity check matrix which contains a 1.
     pub fn iter_paritychecks(self) -> ParityIter {
         match self {
-            LDPCCode::TC128  | LDPCCode::TC256  | LDPCCode::TC512 => self.iter_paritychecks_tc(),
-            LDPCCode::TM1280 | LDPCCode::TM1536 | LDPCCode::TM2048 |
-            LDPCCode::TM5120 | LDPCCode::TM6144 | LDPCCode::TM8192 => self.iter_paritychecks_tm(),
+            LDPCCode::TC128 | LDPCCode::TC256 | LDPCCode::TC512 => self.iter_paritychecks_tc(),
+            LDPCCode::TM1280
+            | LDPCCode::TM1536
+            | LDPCCode::TM2048
+            | LDPCCode::TM5120
+            | LDPCCode::TM6144
+            | LDPCCode::TM8192 => self.iter_paritychecks_tm(),
         }
     }
 
@@ -447,7 +455,7 @@ impl LDPCCode {
             LDPCCode::TC256 => &compact_parity_checks::TC256_H,
             LDPCCode::TC512 => &compact_parity_checks::TC512_H,
             // This function is only called with TC codes.
-            _               => unreachable!(),
+            _ => unreachable!(),
         };
 
         let subm = prototype[0][0][0];
@@ -458,8 +466,18 @@ impl LDPCCode {
         let phi = &self::compact_parity_checks::PHI_J_K_M128;
 
         ParityIter {
-            phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, sub_mat: subm, sub_mat_val: (subm & 0x3F) as usize, check: 0,
+            phi,
+            prototype,
+            m,
+            logmd4: (m / 4).trailing_zeros() as usize,
+            modm: m - 1,
+            modmd4: (m / 4) - 1,
+            rowidx: 0,
+            colidx: 0,
+            sub_mat_idx: 0,
+            sub_mat: subm,
+            sub_mat_val: (subm & 0x3F) as usize,
+            check: 0,
         }
     }
 
@@ -467,29 +485,39 @@ impl LDPCCode {
     fn iter_paritychecks_tm(self) -> ParityIter {
         let m = self.submatrix_size();
         let phi = match m {
-            128  => &self::compact_parity_checks::PHI_J_K_M128,
-            256  => &self::compact_parity_checks::PHI_J_K_M256,
-            512  => &self::compact_parity_checks::PHI_J_K_M512,
+            128 => &self::compact_parity_checks::PHI_J_K_M128,
+            256 => &self::compact_parity_checks::PHI_J_K_M256,
+            512 => &self::compact_parity_checks::PHI_J_K_M512,
             1024 => &self::compact_parity_checks::PHI_J_K_M1024,
             2048 => &self::compact_parity_checks::PHI_J_K_M2048,
             4096 => &self::compact_parity_checks::PHI_J_K_M4096,
             8192 => &self::compact_parity_checks::PHI_J_K_M8192,
-            _    => unreachable!(),
+            _ => unreachable!(),
         };
 
         let prototype_cols = (self.n() + self.punctured_bits()) / m;
         let prototype = match prototype_cols {
-            5  => &self::compact_parity_checks::TM_R12_H,
-            7  => &self::compact_parity_checks::TM_R23_H,
+            5 => &self::compact_parity_checks::TM_R12_H,
+            7 => &self::compact_parity_checks::TM_R23_H,
             11 => &self::compact_parity_checks::TM_R45_H,
-            _  => unreachable!(),
+            _ => unreachable!(),
         };
 
         let subm = prototype[0][0][0];
 
         ParityIter {
-            phi, prototype, m, logmd4: (m/4).trailing_zeros() as usize, modm: m-1, modmd4: (m/4)-1,
-            rowidx: 0, colidx: 0, sub_mat_idx: 0, check: 0, sub_mat: subm, sub_mat_val: (subm & 0x3F) as usize,
+            phi,
+            prototype,
+            m,
+            logmd4: (m / 4).trailing_zeros() as usize,
+            modm: m - 1,
+            modmd4: (m / 4) - 1,
+            rowidx: 0,
+            colidx: 0,
+            sub_mat_idx: 0,
+            check: 0,
+            sub_mat: subm,
+            sub_mat_val: (subm & 0x3F) as usize,
         }
     }
 }
@@ -498,11 +526,18 @@ impl LDPCCode {
 mod tests {
     use std::prelude::v1::*;
 
-    use super::{LDPCCode};
+    use super::LDPCCode;
 
-    const CODES: [LDPCCode;  9] = [LDPCCode::TC128,   LDPCCode::TC256,   LDPCCode::TC512,
-                                   LDPCCode::TM1280,  LDPCCode::TM1536,  LDPCCode::TM2048,
-                                   LDPCCode::TM5120,  LDPCCode::TM6144,  LDPCCode::TM8192,
+    const CODES: [LDPCCode; 9] = [
+        LDPCCode::TC128,
+        LDPCCode::TC256,
+        LDPCCode::TC512,
+        LDPCCode::TM1280,
+        LDPCCode::TM1536,
+        LDPCCode::TM2048,
+        LDPCCode::TM5120,
+        LDPCCode::TM6144,
+        LDPCCode::TM8192,
     ];
 
     fn crc32_u16(crc: u32, data: u32) -> u32 {
@@ -518,9 +553,10 @@ mod tests {
     fn test_iter_parity() {
         // These CRC results have been manually verified and should only change if
         // the ordering of checks returned from the iterator changes.
-        let crc_results = [0x13A9D28D, 0xC3CC7625, 0x66EA9A48,
-                           0xB643C99E, 0x8169E0CF, 0x599A0807,
-                           0xD0E794B1, 0xBD0AB764, 0x9003014C];
+        let crc_results = [
+            0x13A9D28D, 0xC3CC7625, 0x66EA9A48, 0xB643C99E, 0x8169E0CF, 0x599A0807, 0xD0E794B1,
+            0xBD0AB764, 0x9003014C,
+        ];
         for (idx, code) in CODES.iter().enumerate() {
             let mut count = 0;
             let mut crc = 0xFFFFFFFFu32;
