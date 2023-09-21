@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.1.0] - 2023-09-21
+
+* Add `encode_parity()` to `EncodeInto` to permit encoding parity separately
+  from a codeword (#5)
+* Make many accessor methods `const` (#5)
+* Mark some methods `inline`
+* Performance improvement on min-sum decoding with f32/f64 LLRs
+
 ## [v1.0.1] - 2020-11-26
 
 * Add `#[repr(C)]` to `LDPCCode` to prevent a warning when used in FFI.
@@ -11,5 +19,6 @@
 
 Initial release.
 
+[v1.1.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.1.0
 [v1.0.1]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.0.1
 [v1.0.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.0.0

@@ -19,7 +19,7 @@ use crate::codes::LDPCCode;
 pub trait EncodeInto {
     /// Given `data` which has k bits of data to transmit,
     /// encodes the parity and stores it in the `parity` buffer.
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self])
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self])
     where
         Self: Sized;
 
@@ -39,7 +39,7 @@ pub trait EncodeInto {
 }
 
 impl EncodeInto for u8 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
@@ -80,10 +80,11 @@ impl EncodeInto for u8 {
             }
         }
     }
-    
+
+    #[inline]
     fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
         let k = code.k();
-        
+
         // Split codeword into data and parity sections
         let (data, parity) = codeword.split_at_mut(k / 8);
 
@@ -93,16 +94,18 @@ impl EncodeInto for u8 {
         codeword
     }
 
+    #[inline]
     fn copy_encode<'a>(code: &LDPCCode, data: &[u8], codeword: &'a mut[Self]) -> &'a mut [u8] {
         codeword[..data.len()].copy_from_slice(data);
         Self::encode(code, codeword)
     }
 
+    #[inline]
     fn bitlength() -> usize { 8 }
 }
 
 impl EncodeInto for u32 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
@@ -155,7 +158,8 @@ impl EncodeInto for u32 {
             *x = x.to_be();
         }
     }
-    
+
+    #[inline]
     fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
         let k = code.k();
 
@@ -170,6 +174,7 @@ impl EncodeInto for u32 {
         }
     }
 
+    #[inline]
     fn copy_encode<'a>(code: &LDPCCode, data: &[u8], codeword: &'a mut[Self]) -> &'a mut [u8] {
         let codeword_u8 = unsafe {
             slice::from_raw_parts_mut::<'a>(codeword.as_mut_ptr() as *mut u8, codeword.len() * 4)
@@ -182,7 +187,7 @@ impl EncodeInto for u32 {
 }
 
 impl EncodeInto for u64 {
-    fn encode_parity<'a>(code: &LDPCCode, data: &'a mut [Self], parity: &mut [Self]) {
+    fn encode_parity(code: &LDPCCode, data: &mut [Self], parity: &mut [Self]) {
         let k = code.k();
         let r = code.n() - code.k();
         let b = code.circulant_size();
@@ -246,6 +251,7 @@ impl EncodeInto for u64 {
         }
     }
 
+    #[inline]
     fn encode<'a>(code: &LDPCCode, codeword: &'a mut[Self]) -> &'a mut [u8] {
         let k = code.k();
 
@@ -259,6 +265,7 @@ impl EncodeInto for u64 {
         }
     }
 
+    #[inline]
     fn copy_encode<'a>(code: &LDPCCode, data: &[u8], codeword: &'a mut[Self]) -> &'a mut [u8] {
         let codeword_u8 = unsafe {
             slice::from_raw_parts_mut::<'a>(codeword.as_mut_ptr() as *mut u8, codeword.len() * 8)
@@ -271,7 +278,6 @@ impl EncodeInto for u64 {
 }
 
 impl LDPCCode {
-
     /// Encode a codeword. This function assumes the first k bits of `codeword` have already
     /// been set to your data, and will set the remaining n-k bits appropriately.
     ///
@@ -283,6 +289,7 @@ impl LDPCCode {
     /// Returns a view of `codeword` in &mut [u8] which may be convenient if you
     /// passed in a larger type but want to use the output as bytes. You can just
     /// not use the return value if you wish to keep your original view on `codeword`.
+    #[inline]
     pub fn encode<'a, T>(&self, codeword: &'a mut [T]) -> &'a mut [u8]
         where T: EncodeInto
     {
@@ -298,6 +305,7 @@ impl LDPCCode {
     /// Returns a view of `codeword` in &mut [u8] which may be convenient if you
     /// passed in a larger type but want to use the output as bytes. You can just
     /// not use the return value if you wish to keep your original view on `codeword`.
+    #[inline]
     pub fn copy_encode<'a, T>(&self, data: &[u8], codeword: &'a mut [T]) -> &'a mut [u8]
         where T: EncodeInto
     {

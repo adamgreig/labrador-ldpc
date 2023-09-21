@@ -1,6 +1,6 @@
 [package]
 name = "labrador-ldpc"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["Adam Greig <adam@adamgreig.com>"]
 description = "Encoders and decoders for CCSDS LDPC error correcting codes"
 keywords = ["ldpc", "ecc", "labrador", "no_std"]
