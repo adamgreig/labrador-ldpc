@@ -16,24 +16,6 @@ use core::ops::{Add,AddAssign,Neg,Sub};
 
 use crate::codes::LDPCCode;
 
-// Ugh gross yuck.
-//
-// No `f32::abs()` available with `no_std`, and it's not worth bringing in some
-// dependency just to get it. This is however used right in the hottest decoder
-// loop and it's so much faster than the obvious `if f < 0 { -f } else { f }`.
-fn fabs(f: f64) -> f64 {
-    unsafe {
-        let x: u64 = *((&f as *const f64) as *const u64) & 0x7FFF_FFFF_FFFF_FFFF;
-        *((&x as *const u64) as *const f64)
-    }
-}
-fn fabsf(f: f32) -> f32 {
-    unsafe {
-        let x: u32 = *((&f as *const f32) as *const u32) & 0x7FFF_FFFF;
-        *((&x as *const u32) as *const f32)
-    }
-}
-
 /// Trait for types that the min-sum decoder can operate with.
 ///
 /// Implemented for `i8`, `i16`, `i32`, `f32`, and `f64`.
@@ -78,14 +60,14 @@ impl DecodeFrom for f32 {
     #[inline] fn one()      -> f32 { 1.0 }
     #[inline] fn zero()     -> f32 { 0.0 }
     #[inline] fn maxval()   -> f32 { f32::MAX }
-    #[inline] fn abs(&self) -> f32 { fabsf(*self) }
+    #[inline] fn abs(&self) -> f32 { f32::from_bits(self.to_bits() & 0x7FFF_FFFF) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
 }
 impl DecodeFrom for f64 {
     #[inline] fn one()      -> f64 { 1.0 }
     #[inline] fn zero()     -> f64 { 0.0 }
     #[inline] fn maxval()   -> f64 { f64::MAX }
-    #[inline] fn abs(&self) -> f64 { fabs(*self) }
+    #[inline] fn abs(&self) -> f64 { f64::from_bits(self.to_bits() & 0x7FFF_FFFF_FFFF_FFFF) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
 }
 

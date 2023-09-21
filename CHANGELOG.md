@@ -5,6 +5,8 @@
 * Add `encode_parity()` to `EncodeInto` to permit encoding parity separately
   from a codeword (#5)
 * Make many accessor methods `const` (#5)
+* Mark some methods `inline`
+* Performance improvement on min-sum decoding with f32/f64 LLRs
 
 ## [v1.0.1] - 2020-11-26
 
