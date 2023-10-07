@@ -11,7 +11,7 @@ repository = "https://github.com/adamgreig/labrador-ldpc"
 documentation = "https://docs.rs/labrador-ldpc"
 
 [dependencies]
-labrador-ldpc = { version = "1.1.0", path = ".." }
+labrador-ldpc = { version = "1.1.1", path = ".." }
 
 [lib]
 name = "labrador_ldpc"
