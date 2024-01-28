@@ -35,7 +35,8 @@ pub trait DecodeFrom:
     fn saturating_add(&self, other: Self) -> Self;
     /// Saturating sub
     fn saturating_sub(&self, other: Self) -> Self;
-    /// Get hard-bit equivalent
+    /// Hard-information decoding for T, where negative values are a 1 bit and return `true`.
+    #[inline]
     fn hard_bit(&self) -> bool {
         *self < Self::zero()
     }
