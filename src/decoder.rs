@@ -35,6 +35,10 @@ pub trait DecodeFrom:
     fn saturating_add(&self, other: Self) -> Self;
     /// Saturating sub
     fn saturating_sub(&self, other: Self) -> Self;
+    /// Get hard-bit equivalent
+    fn hard_bit(&self) -> bool {
+        *self < Self::zero()
+    }
 }
 
 impl DecodeFrom for i8 {
