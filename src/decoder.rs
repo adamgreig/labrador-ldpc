@@ -35,11 +35,8 @@ pub trait DecodeFrom:
     fn saturating_add(&self, other: Self) -> Self;
     /// Saturating sub
     fn saturating_sub(&self, other: Self) -> Self;
-    /// Hard-information decoding for T, where negative values are a 1 bit and return `true`.
-    #[inline]
-    fn hard_bit(&self) -> bool {
-        *self < Self::zero()
-    }
+    /// Hard-information decoding for T, treating negative values as `true`
+    fn hard_bit(&self) -> bool;
 }
 
 impl DecodeFrom for i8 {
@@ -49,6 +46,7 @@ impl DecodeFrom for i8 {
     #[inline] fn abs(&self) -> i8 { i8::saturating_abs(*self) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { i8::saturating_add(*self, other) }
     #[inline] fn saturating_sub(&self, other: Self) -> Self { i8::saturating_sub(*self, other) }
+    #[inline] fn hard_bit(&self) -> bool { *self < 0 }
 }
 impl DecodeFrom for i16 {
     #[inline] fn one()      -> i16 { 1 }
@@ -57,6 +55,7 @@ impl DecodeFrom for i16 {
     #[inline] fn abs(&self) -> i16 { i16::saturating_abs(*self) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { i16::saturating_add(*self, other) }
     #[inline] fn saturating_sub(&self, other: Self) -> Self { i16::saturating_sub(*self, other) }
+    #[inline] fn hard_bit(&self) -> bool { *self < 0 }
 }
 impl DecodeFrom for i32 {
     #[inline] fn one()      -> i32 { 1 }
@@ -65,6 +64,7 @@ impl DecodeFrom for i32 {
     #[inline] fn abs(&self) -> i32 { i32::saturating_abs(*self) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { i32::saturating_add(*self, other) }
     #[inline] fn saturating_sub(&self, other: Self) -> Self { i32::saturating_sub(*self, other) }
+    #[inline] fn hard_bit(&self) -> bool { *self < 0 }
 }
 impl DecodeFrom for f32 {
     #[inline] fn one()      -> f32 { 1.0 }
@@ -73,6 +73,7 @@ impl DecodeFrom for f32 {
     #[inline] fn abs(&self) -> f32 { f32::from_bits(self.to_bits() & 0x7FFF_FFFF) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
     #[inline] fn saturating_sub(&self, other: Self) -> Self { *self - other }
+    #[inline] fn hard_bit(&self) -> bool { *self < 0.0 }
 }
 impl DecodeFrom for f64 {
     #[inline] fn one()      -> f64 { 1.0 }
@@ -81,6 +82,7 @@ impl DecodeFrom for f64 {
     #[inline] fn abs(&self) -> f64 { f64::from_bits(self.to_bits() & 0x7FFF_FFFF_FFFF_FFFF) }
     #[inline] fn saturating_add(&self, other: Self) -> Self { *self + other }
     #[inline] fn saturating_sub(&self, other: Self) -> Self { *self - other }
+    #[inline] fn hard_bit(&self) -> bool { *self < 0.0 }
 }
 
 impl LDPCCode {
@@ -302,8 +304,8 @@ impl LDPCCode {
     ///
     /// This algorithm is slower and requires more memory than the bit-flipping decode, but
     /// operates on soft information and provides very close to optimal decoding. If you don't have
-    /// soft information, you can use `decode_hard_to_llrs` to go from hard information (bytes from
-    /// a receiver) to soft information (LLRs).
+    /// soft information, you can use `hard_to_llrs` to go from hard information (bytes from a
+    /// receiver) to soft information (LLRs).
     ///
     /// Requires:
     ///
@@ -356,21 +358,25 @@ impl LDPCCode {
         assert_eq!(working.len(), self.decode_ms_working_len(), "working.len() incorrect");
         assert_eq!(working_u8.len(), self.decode_ms_working_u8_len(), "working_u8 != (n+p-k)/8");
 
-        // Rename output to parities as we'll use it to keep track of the parity bits until the end
+        // Rename output to parities as we'll use it to keep track of the status of each check's
+        // parity equations, until using it to write the decoded output on completion.
         let parities = output;
 
-        // Rename working_u8 to ui_sgns, we'll use it to accumulate signs for each check
+        // Rename working_u8 to ui_sgns.
+        // It will be used to accumulate products of signs of each check's incoming messages.
         let ui_sgns = working_u8;
 
-        // Zero the working area and split it up
-        for w in &mut working[..] { *w = T::zero() }
+        // Split up the working area.
+        // `u` contains check-to-variable messages, `v` contains variable-to-check messages,
+        // `va` contains the marginal a posteriori LLRs for each variable, `ui_min*` tracks the
+        // smallest and second-smallest variable-to-check message for each check.
         let (u, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
         let (v, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
         let (va, working)       = working.split_at_mut(n + p);
         let (ui_min1, ui_min2)  = working.split_at_mut(n + p - k);
 
         for iter in 0..maxiters {
-            // Initialise the marginals to the input LLRs (and to 0 for punctured bits)
+            // Initialise the marginals to the input LLRs (and to 0 for punctured bits).
             va[..llrs.len()].copy_from_slice(llrs);
             for x in &mut va[llrs.len()..] { *x = T::zero() }
 
@@ -378,41 +384,47 @@ impl LDPCCode {
             // inlining the iterator's next() method, which leads to a big performance hit.
             let mut idx = 0;
             for (check, var) in self.iter_paritychecks() {
-                // Work out messages to this variable
+                // If this variable-to-check message equals the minimum of all messages to this
+                // check, use the second-minimum to obtain the minimum-excluding-this-variable.
                 if v[idx].abs() == ui_min1[check] {
                     u[idx] = ui_min2[check];
                 } else {
                     u[idx] = ui_min1[check];
                 }
+
+                // When the product of all incoming signs was -1, negate `u`.
                 if ui_sgns[check/8] >> (check%8) & 1 == 1 {
                     u[idx] = -u[idx];
                 }
-                if v[idx] < T::zero() {
+
+                // Remove the effect of the sign of this variable's message to this check node.
+                if v[idx].hard_bit() {
                     u[idx] = -u[idx];
                 }
 
-                // Accumulate incoming messages to each variable
+                // Accumulate with all incoming messages to this variable.
                 va[var] = va[var].saturating_add(u[idx]);
 
-                // DIY enumerate
                 idx += 1;
             }
 
+            // Compute variable-to-check messages `v`.
             for x in &mut ui_min1[..] { *x = T::maxval() }
             for x in &mut ui_min2[..] { *x = T::maxval() }
             for x in &mut ui_sgns[..] { *x = 0 }
             for x in &mut parities[..] { *x = 0 }
             idx = 0;
             for (check, var) in self.iter_paritychecks() {
-                // Work out messages to this parity check
+                // Compute new `v`, with self-correcting behaviour.
                 let new_v_ai = va[var].saturating_sub(u[idx]);
-                if v[idx] != T::zero() && (new_v_ai >= T::zero()) != (v[idx] >= T::zero()) {
-                    v[idx] = T::zero();
-                } else {
+                if new_v_ai.hard_bit() == v[idx].hard_bit() || v[idx] == T::zero() {
                     v[idx] = new_v_ai;
+                } else {
+                    v[idx] = T::zero();
                 }
 
-                // Accumulate two minimums
+                // Track the smallest and second-smallest abs(variable-to-check) messages.
+                // These may be the same if two messages have identical magnitude.
                 if v[idx].abs() < ui_min1[check] {
                     ui_min2[check] = ui_min1[check];
                     ui_min1[check] = v[idx].abs();
@@ -420,26 +432,28 @@ impl LDPCCode {
                     ui_min2[check] = v[idx].abs();
                 }
 
-                // Accumulate signs
-                if v[idx] < T::zero() {
+                // Accumulate product of signs of variable-to-check messages, with a set
+                // bit meaning the product is negative.
+                if v[idx].hard_bit() {
                     ui_sgns[check/8] ^= 1<<(check%8);
                 }
 
-                // Accumulate parity
-                if va[var] <= T::zero() {
+                // Accumulate output of each check's parity equation, used to detect
+                // when all parity checks are satisfied and thus decoding is complete.
+                if va[var].hard_bit() {
                     parities[check/8] ^= 1<<(check%8);
                 }
 
                 idx += 1;
             }
 
-            // Check parities. If none are 1 then we have a valid codeword.
+            // Check parity equations. If none are 1 then we have a valid codeword.
             if *parities.iter().max().unwrap() == 0 {
-                // Hard decode marginals into the output
+                // Hard decode marginals into the output.
                 let output = parities;
                 for o in &mut output[..] { *o = 0 }
                 for (var, &va) in va[0..(n+p)].iter().enumerate() {
-                    if va <= T::zero() {
+                    if va.hard_bit() {
                         output[var/8] |= 1 << (7 - (var%8));
                     }
                 }
@@ -447,11 +461,11 @@ impl LDPCCode {
             }
         }
 
-        // If we failed to find a codeword, at least hard decode the marginals into the output
+        // If we failed to find a codeword, at least hard decode the marginals into the output.
         let output = parities;
         for o in &mut output[..] { *o = 0 }
         for (var, &va) in va[0..(n+p)].iter().enumerate() {
-            if va <= T::zero() {
+            if va.hard_bit() {
                 output[var/8] |= 1 << (7 - (var%8));
             }
         }
@@ -486,7 +500,7 @@ impl LDPCCode {
         for o in &mut output[..] { *o = 0 }
 
         for (i, llr) in llrs.iter().enumerate() {
-            if *llr < T::zero() {
+            if llr.hard_bit() {
                 output[i/8] |= 1 << (7 - (i%8));
             }
         }
