@@ -1,0 +1,10 @@
+[package]
+name = "perftest"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+labrador-ldpc = { path = "../" }
+rand = "0.8.5"
+rand_distr = "0.4.3"
+rayon = "1.8.1"
