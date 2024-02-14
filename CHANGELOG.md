@@ -1,5 +1,10 @@
 # Changelog
 
+## [v1.2.0] - 2024-02-14
+
+* Fix some possible panics (#10)
+* Add new `hard_bit()` method to `DecodeFrom` trait to simplify converting LLRs to binary bits (#11)
+
 ## [v1.1.1] - 2023-10-07
 
 * Change `encode_parity` to only require a shared reference for `data`
@@ -23,6 +28,7 @@
 
 Initial release.
 
+[v1.2.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.2.0
 [v1.1.1]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.1.1
 [v1.1.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.1.0
 [v1.0.1]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.0.1
