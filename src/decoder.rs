@@ -365,11 +365,13 @@ impl LDPCCode {
         // Rename working_u8 to ui_sgns.
         // It will be used to accumulate products of signs of each check's incoming messages.
         let ui_sgns = working_u8;
+        for x in &mut ui_sgns[..] { *x = 0 }
 
         // Split up the working area.
         // `u` contains check-to-variable messages, `v` contains variable-to-check messages,
         // `va` contains the marginal a posteriori LLRs for each variable, `ui_min*` tracks the
         // smallest and second-smallest variable-to-check message for each check.
+        for w in &mut working[..] { *w = T::zero() }
         let (u, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
         let (v, working)        = working.split_at_mut(self.paritycheck_sum() as usize);
         let (va, working)       = working.split_at_mut(n + p);
