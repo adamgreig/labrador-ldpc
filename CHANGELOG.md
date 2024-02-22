@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.2.1] - 2024-02-22
+
+* Fix accidental deletion of working area zero-initialisation in min-sum
+  decoder which could lead to different decoding results depending on
+  working area re-use (#14).
+
 ## [v1.2.0] - 2024-02-14
 
 * Fix some possible panics (#10)
@@ -28,6 +34,7 @@
 
 Initial release.
 
+[v1.2.1]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.2.1
 [v1.2.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.2.0
 [v1.1.1]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.1.1
 [v1.1.0]: https://github.com/adamgreig/labrador-ldpc/releases/tag/v1.1.0
